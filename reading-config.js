@@ -13,9 +13,13 @@ const READING_SALES_CONFIG = {
   cashAppCashtag: "$StarFort13",
   cashAppPaymentUrl: "https://cash.app/$StarFort13",
 
-  // REPLACE these three placeholders before going live:
-  formEndpoint: "REPLACE_WITH_PRIVATE_FORM_ENDPOINT",              // e.g. https://formspree.io/f/xxxxxxxx
-  contactEmail: "REPLACE_WITH_CONTACT_EMAIL",                      // shown to customers if a submission fails
+  // Private form endpoint (Formspree) — configured.
+  formEndpoint: "https://formspree.io/f/mqedqbqa",
+
+  // Contact email — configured.
+  contactEmail: "katythomas96@yahoo.com",
+
+  // REPLACE this placeholder before going live:
   affiliateApplicationUrl: "REPLACE_WITH_AFFILIATE_APPLICATION_URL", // e.g. a Google Form link for promoter applications
 
   // Referral tracking settings — safe to leave as-is.
