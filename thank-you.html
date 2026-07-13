@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>Reading Request Received | StarChart 13</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Raleway:wght@400;700;800;900&display=swap');
+:root{
+  --bg:#06001a; --card:#0d0025; --border:#3a1a66; --ink:#e8e0ff; --muted:#a090cc;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:#06001a; color:var(--ink); font-family:Trebuchet MS,sans-serif; min-height:100vh;
+  background-image:
+    radial-gradient(ellipse at 15% 8%, rgba(155,77,255,0.18) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 12%, rgba(255,170,0,0.12) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, rgba(100,20,200,0.12) 0%, transparent 60%);
+}
+.wrap{max-width:520px;margin:0 auto;padding:32px 18px 60px;}
+h1{
+  font-family:Raleway,sans-serif; font-size:clamp(22px,6vw,30px); font-weight:900; text-align:center;
+  color:#ffd700; text-shadow:0 0 20px rgba(255,215,0,0.4), 0 0 40px rgba(155,77,255,0.3); margin-bottom:8px;
+}
+.sub{text-align:center; color:var(--muted); font-size:14px; margin-bottom:28px; line-height:1.6;}
+.card{
+  background:linear-gradient(180deg, rgba(123,47,255,.08), rgba(204,68,255,.03));
+  border:1px solid rgba(155,77,255,.4); border-radius:16px; padding:22px; margin-bottom:16px;
+  box-shadow:0 10px 60px rgba(0,0,0,.75), 0 0 30px rgba(155,77,255,0.08);
+}
+.order-label{font-family:Raleway,sans-serif; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#00e5ff; margin-bottom:8px;}
+.order-id{font-family:'Courier New',monospace; font-size:26px; font-weight:900; color:#fff; letter-spacing:.04em; word-break:break-all;}
+.btn{
+  display:block; width:100%; text-align:center; padding:15px 18px; border-radius:14px; border:none;
+  font-family:Raleway,sans-serif; font-weight:900; font-size:15px; letter-spacing:.04em; cursor:pointer;
+  text-decoration:none; margin-top:12px;
+}
+.btn-cash{
+  background:linear-gradient(135deg,rgba(255,0,150,.55),rgba(255,0,200,.4)); border:2px solid #ff2bd6; color:#fff;
+  box-shadow:0 0 20px rgba(255,43,214,.7);
+}
+.btn-copy{background:rgba(0,229,255,.14); border:2px solid #00e5ff; color:#00e5ff;}
+.btn-copy.copied{background:rgba(0,255,136,.14); border-color:#00ff88; color:#00ff88;}
+.btn-back{background:rgba(255,255,255,.05); border:2px solid rgba(255,255,255,.2); color:var(--ink);}
+.reminder{font-size:13px; color:var(--muted); line-height:1.6; margin-top:14px; padding-top:14px; border-top:1px dashed rgba(155,77,255,.3);}
+.contact{font-size:12.5px; color:var(--muted); line-height:1.6; text-align:center; margin-top:18px;}
+.contact a{color:#00e5ff;}
+:focus-visible{outline:2px solid #00e5ff; outline-offset:2px;}
+@media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Your Reading Request Has Been Received</h1>
+  <p class="sub">Your reading request has been submitted. Complete your $25 Cash App payment to finish your order.</p>
+
+  <div class="card">
+    <div class="order-label">Order Number</div>
+    <div class="order-id" id="orderId">—</div>
+
+    <button class="btn btn-copy" id="copyBtn">Copy Order Number</button>
+    <a class="btn btn-cash" id="cashAppBtn" href="#" target="_blank" rel="noopener">Pay $25 With Cash App</a>
+
+    <div class="reminder">
+      Include your StarChart13 order number in the Cash App payment note so I can match your payment to your reading.
+    </div>
+  </div>
+
+  <p class="contact">
+    Need to correct your name, birth date, birth time, or location? Email
+    <a id="contactLink" href="#">this address</a> and include your order number.
+  </p>
+
+  <a class="btn btn-back" href="index.html">&larr; Back to StarChart 13</a>
+</div>
+
+<script src="reading-config.js"></script>
+<script>
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  const order = params.get("order") || "Not found — check your email or contact us";
+  document.getElementById("orderId").textContent = order;
+
+  try{
+    document.getElementById("cashAppBtn").href = READING_SALES_CONFIG.cashAppPaymentUrl;
+  }catch(e){
+    document.getElementById("cashAppBtn").href = "https://cash.app/$StarFort13";
+  }
+  try{
+    const email = READING_SALES_CONFIG.contactEmail;
+    if(email && email.indexOf("REPLACE_WITH") !== 0){
+      document.getElementById("contactLink").href = "mailto:" + email;
+      document.getElementById("contactLink").textContent = email;
+    }
+  }catch(e){}
+
+  document.getElementById("copyBtn").addEventListener("click", function(){
+    const btn = this;
+    navigator.clipboard.writeText(order).then(function(){
+      btn.textContent = "Copied ✓";
+      btn.classList.add("copied");
+      setTimeout(function(){ btn.textContent = "Copy Order Number"; btn.classList.remove("copied"); }, 1800);
+    }).catch(function(){
+      alert("Could not copy automatically. Your order number is: " + order);
+    });
+  });
+})();
+</script>
+</body>
+</html>
