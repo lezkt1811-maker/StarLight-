@@ -11,7 +11,7 @@ const READING_SALES_CONFIG = {
 
   // Your Cash App info — already filled in.
   cashAppCashtag: "$StarFort13",
-  cashAppPaymentUrl: "https://cash.app/$StarFort13",
+  cashAppPaymentUrl: "https://cash.app/pay/link/au85j9vj",
 
   // Private form endpoint (Formspree) — configured.
   formEndpoint: "https://formspree.io/f/mqedqbqa",
