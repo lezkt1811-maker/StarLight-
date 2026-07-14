@@ -32,6 +32,14 @@ h1{
 }
 .order-label{font-family:Raleway,sans-serif; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#00e5ff; margin-bottom:8px;}
 .order-id{font-family:'Courier New',monospace; font-size:26px; font-weight:900; color:#fff; letter-spacing:.04em; word-break:break-all;}
+
+.payment-note-box{
+  margin-top:16px; padding:14px 16px; border-radius:12px;
+  background:rgba(0,0,0,.35); border:1px dashed rgba(0,229,255,.45);
+}
+.payment-note-label{font-family:Raleway,sans-serif; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:#00e5ff; margin-bottom:6px;}
+.payment-note-text{font-family:'Courier New',monospace; font-size:15px; color:#fff; word-break:break-word; margin-bottom:10px;}
+
 .btn{
   display:block; width:100%; text-align:center; padding:15px 18px; border-radius:14px; border:none;
   font-family:Raleway,sans-serif; font-weight:900; font-size:15px; letter-spacing:.04em; cursor:pointer;
@@ -41,9 +49,17 @@ h1{
   background:linear-gradient(135deg,rgba(255,0,150,.55),rgba(255,0,200,.4)); border:2px solid #ff2bd6; color:#fff;
   box-shadow:0 0 20px rgba(255,43,214,.7);
 }
-.btn-copy{background:rgba(0,229,255,.14); border:2px solid #00e5ff; color:#00e5ff;}
+.btn-copy{background:rgba(0,229,255,.14); border:2px solid #00e5ff; color:#00e5ff; margin-top:0;}
 .btn-copy.copied{background:rgba(0,255,136,.14); border-color:#00ff88; color:#00ff88;}
 .btn-back{background:rgba(255,255,255,.05); border:2px solid rgba(255,255,255,.2); color:var(--ink);}
+
+.copy-message{
+  display:none; margin-top:12px; padding:11px 14px; border-radius:10px; text-align:center;
+  background:rgba(0,255,136,.1); border:1px solid rgba(0,255,136,.4); color:#00ff88;
+  font-size:13px; line-height:1.5;
+}
+.copy-message.show{display:block;}
+
 .reminder{font-size:13px; color:var(--muted); line-height:1.6; margin-top:14px; padding-top:14px; border-top:1px dashed rgba(155,77,255,.3);}
 .contact{font-size:12.5px; color:var(--muted); line-height:1.6; text-align:center; margin-top:18px;}
 .contact a{color:#00e5ff;}
@@ -60,11 +76,19 @@ h1{
     <div class="order-label">Order Number</div>
     <div class="order-id" id="orderId">—</div>
 
+    <div class="payment-note-box">
+      <div class="payment-note-label">Payment note</div>
+      <div class="payment-note-text" id="paymentNoteText">—</div>
+      <button class="btn btn-copy" id="copyNoteBtn">Copy Payment Note</button>
+    </div>
+
     <button class="btn btn-copy" id="copyBtn">Copy Order Number</button>
-    <a class="btn btn-cash" id="cashAppBtn" href="#" target="_blank" rel="noopener">Pay $25 With Cash App</a>
+    <button class="btn btn-cash" id="payCashAppBtn">Copy Payment Note &amp; Pay $25</button>
+
+    <div class="copy-message" id="copyMessage" aria-live="polite"></div>
 
     <div class="reminder">
-      Include your StarChart13 order number in the Cash App payment note so I can match your payment to your reading.
+      Include your StarChart13 order number and referral code in the Cash App payment note so I can match your payment to your reading and credit the right promoter.
     </div>
   </div>
 
@@ -83,11 +107,33 @@ h1{
   const order = params.get("order") || "Not found — check your email or contact us";
   document.getElementById("orderId").textContent = order;
 
-  try{
-    document.getElementById("cashAppBtn").href = READING_SALES_CONFIG.cashAppPaymentUrl;
-  }catch(e){
-    document.getElementById("cashAppBtn").href = "https://cash.app/$StarFort13";
+  /* ---------- Resolve referral code: URL param (from the actual submitted order) first, ---------- */
+  /* ---------- falling back to a still-valid stored referral, then DIRECT. Never typed by the customer. ---------- */
+  function sc13ResolveReferralCode(){
+    const fromUrl = params.get("ref");
+    if(fromUrl) return fromUrl.trim().toUpperCase();
+    try{
+      const key = (typeof READING_SALES_CONFIG !== "undefined" && READING_SALES_CONFIG.referralStorageKey) || "starchart13_referral";
+      const raw = localStorage.getItem(key);
+      if(raw){
+        const rec = JSON.parse(raw);
+        if(rec && rec.code && typeof rec.expiresAt === "number" && rec.expiresAt > Date.now()){
+          return String(rec.code).toUpperCase();
+        }
+      }
+    }catch(e){ /* localStorage unavailable — fall through to DIRECT */ }
+    return "DIRECT";
   }
+
+  const referralCode = sc13ResolveReferralCode();
+  const paymentNote = order + " | REF: " + referralCode;
+  document.getElementById("paymentNoteText").textContent = paymentNote;
+
+  let cashAppUrl = "https://cash.app/pay/link/au85j9vj";
+  try{
+    if(READING_SALES_CONFIG.cashAppPaymentUrl) cashAppUrl = READING_SALES_CONFIG.cashAppPaymentUrl;
+  }catch(e){}
+
   try{
     const email = READING_SALES_CONFIG.contactEmail;
     if(email && email.indexOf("REPLACE_WITH") !== 0){
@@ -96,14 +142,64 @@ h1{
     }
   }catch(e){}
 
+  /* ---------- Safe clipboard copy with fallback ---------- */
+  function sc13FallbackCopy(text){
+    try{
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.top = "-9999px";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      if(ok) return true;
+    }catch(e){ /* fall through */ }
+    try{ window.prompt("Copy this payment note:", text); }catch(e){}
+    return false;
+  }
+  function sc13Copy(text){
+    return new Promise(function(resolve){
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(function(){ resolve(true); }).catch(function(){
+          resolve(sc13FallbackCopy(text));
+        });
+      } else {
+        resolve(sc13FallbackCopy(text));
+      }
+    });
+  }
+
+  function sc13FlashCopied(btn, restoreLabel){
+    btn.textContent = "Copied ✓";
+    btn.classList.add("copied");
+    setTimeout(function(){ btn.textContent = restoreLabel; btn.classList.remove("copied"); }, 1800);
+  }
+
+  /* "Copy Order Number" now copies the complete payment note (order ID + referral code) */
   document.getElementById("copyBtn").addEventListener("click", function(){
     const btn = this;
-    navigator.clipboard.writeText(order).then(function(){
-      btn.textContent = "Copied ✓";
-      btn.classList.add("copied");
-      setTimeout(function(){ btn.textContent = "Copy Order Number"; btn.classList.remove("copied"); }, 1800);
-    }).catch(function(){
-      alert("Could not copy automatically. Your order number is: " + order);
+    sc13Copy(paymentNote).then(function(){ sc13FlashCopied(btn, "Copy Order Number"); });
+  });
+
+  /* Dedicated "Copy Payment Note" button beneath the visible note */
+  document.getElementById("copyNoteBtn").addEventListener("click", function(){
+    const btn = this;
+    sc13Copy(paymentNote).then(function(){ sc13FlashCopied(btn, "Copy Payment Note"); });
+  });
+
+  /* Main Cash App button: copy note -> show confirmation message -> then open Cash App */
+  document.getElementById("payCashAppBtn").addEventListener("click", function(){
+    const msg = document.getElementById("copyMessage");
+    sc13Copy(paymentNote).then(function(){
+      msg.textContent = "Payment note copied. Paste it into the Cash App note field.";
+      msg.classList.add("show");
+      setTimeout(function(){
+        window.location.href = cashAppUrl;
+      }, 700);
     });
   });
 })();
