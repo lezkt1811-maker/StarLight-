@@ -342,15 +342,24 @@
     ctx.restore();
 
     // planets
-    const sorted = this.positions.slice().sort(function (a, b) { return a.lon - b.lon; });
-    let lastX = -999;
-    for (const p of sorted) {
-      let px = this._lonToX(p.lon);
-      if (px < -30 || px > W + 30) continue;
-      // simple de-overlap: nudge vertically if too close horizontally to previous
-      const crowded = Math.abs(px - lastX) < 26;
-      lastX = px;
-      const py = eclY - (crowded ? 30 : 0);
+    // De-overlap by actual SCREEN position, not raw longitude — sorting by raw
+    // longitude breaks near the 0/360 wrap point, where two planets that sit
+    // right next to each other visually (e.g. 355° and 5°) end up far apart
+    // in a longitude-sorted list and never get flagged as crowded.
+    const withX = this.positions
+      .map(function (p) { return { p: p, px: this._lonToX(p.lon) }; }, this)
+      .filter(function (o) { return o.px > -30 && o.px < W + 30; })
+      .sort(function (a, b) { return a.px - b.px; });
+
+    const MIN_GAP = 26;   // minimum horizontal px between symbols on the same row
+    const ROW_STEP = 26;  // vertical px between stacked rows
+    const rowLastX = [];  // last-used x per row, so a symbol picks the first free row
+    for (const o of withX) {
+      const p = o.p, px = o.px;
+      let row = 0;
+      while (row < rowLastX.length && px - rowLastX[row] < MIN_GAP) row++;
+      rowLastX[row] = px;
+      const py = eclY - row * ROW_STEP;
 
       ctx.beginPath();
       ctx.moveTo(px, eclY);
