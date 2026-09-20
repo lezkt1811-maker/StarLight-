@@ -806,12 +806,16 @@ function sc13PrepareDetailedReading(){
         '<span style="color:#8dffb0;font-weight:900;">✓ Your report data is ready.</span><br>' +
         count + ' chart points • ' + aspectCount + ' aspects • ' + changed +
         ' tropical/true-sky sign changes detected.<br>' +
-        '<span style="color:rgba(255,233,168,.7);">Next connection: $25 Stripe checkout → automatic PDF delivery.</span>';
+        '<span style="color:rgba(255,233,168,.7);">Redirecting to secure $25 Stripe checkout → automatic PDF delivery.</span>';
     }
 
     try{
       document.getElementById("sc13ReadingProduct")?.scrollIntoView({behavior:"smooth",block:"center"});
     }catch(e){}
+
+    if(READING_SALES_CONFIG.stripePaymentUrl){
+      window.open(READING_SALES_CONFIG.stripePaymentUrl, "_blank", "noopener,noreferrer");
+    }
     return payload;
   }catch(err){
     if(msg){
