@@ -1,7 +1,6 @@
 name = "starchart13-fulfillment"
 main = "src/index.js"
 compatibility_date = "2024-09-23"
-compatibility_flags = ["nodejs_compat"]
 
 # Created by `wrangler kv:namespace create ORDERS` — paste the id it prints below.
 [[kv_namespaces]]

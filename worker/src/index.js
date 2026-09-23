@@ -1,8 +1,8 @@
-import Stripe from "stripe";
 import { buildReadingPdf } from "./pdf.js";
 import { generateInterpretation } from "./interpret.js";
 import { sendReadingEmail, notifyOwner } from "./email.js";
 import { STATUS, createOrder, getOrder, getOrderIdBySession, setStatus } from "./orders.js";
+import { verifyStripeSignature } from "./verifyStripeSignature.js";
 
 function corsHeaders(env) {
   return {
@@ -80,17 +80,12 @@ async function handleStatus(url, env) {
 }
 
 async function handleWebhook(request, env, ctx) {
-  const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-    httpClient: Stripe.createFetchHttpClient(),
-    apiVersion: "2024-06-20",
-  });
-
   const signature = request.headers.get("stripe-signature");
   const rawBody = await request.text();
 
   let event;
   try {
-    event = await stripe.webhooks.constructEventAsync(rawBody, signature, env.STRIPE_WEBHOOK_SECRET);
+    event = await verifyStripeSignature(rawBody, signature, env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
     console.error("Stripe signature verification failed", err.message);
     return new Response("Signature verification failed", { status: 400 });
