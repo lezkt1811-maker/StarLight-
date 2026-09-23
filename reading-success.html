@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>Payment Received | StarChart 13</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Raleway:wght@400;700;900&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:#000; color:#ffe9a8; font-family:Trebuchet MS,sans-serif; min-height:100vh;
+}
+.wrap{max-width:520px;margin:0 auto;padding:48px 18px 60px;text-align:center;}
+h1{
+  font-family:Cinzel,serif; font-weight:900; font-size:clamp(20px,6vw,28px);
+  color:#ffd700; text-shadow:0 0 20px rgba(255,215,0,0.4); margin-bottom:14px;
+}
+.check{font-size:44px;margin-bottom:14px;}
+p{font-size:14px;line-height:1.7;color:rgba(255,233,168,.85);margin-bottom:14px;}
+.card{
+  background:linear-gradient(180deg, rgba(255,215,0,.06), rgba(255,215,0,.02));
+  border:1px solid rgba(255,215,0,.3); border-radius:16px; padding:24px 20px; margin:24px 0;
+}
+.status-line{font-family:'Courier New',monospace; font-size:12px; color:rgba(255,233,168,.55); margin-top:16px;}
+.status-line.ready{color:#8dffb0;}
+.status-line.failed{color:#ff8f8f;}
+.btn-back{
+  display:inline-block; margin-top:20px; padding:14px 28px; border-radius:999px;
+  border:1px solid rgba(255,215,0,.4); background:rgba(255,215,0,.06); color:#ffd700;
+  font-family:Raleway,sans-serif; font-weight:900; font-size:14px; text-decoration:none; letter-spacing:.05em;
+}
+.contact{font-size:12px; color:rgba(255,233,168,.5); margin-top:24px; line-height:1.6;}
+.contact a{color:#ffd700;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="check">✨</div>
+  <h1>Payment Received</h1>
+  <div class="card">
+    <p>Your StarChart13 detailed reading is being prepared using the exact chart you already generated.</p>
+    <p>It will be emailed to you automatically as a PDF — usually within a few minutes. You don't need to keep this page open, and there's nothing else for you to do.</p>
+    <div class="status-line" id="statusLine">Checking status…</div>
+  </div>
+  <a class="btn-back" href="index.html">&larr; Back to StarChart 13</a>
+  <p class="contact">
+    Reading hasn't arrived after a while? Email <a id="contactLink" href="#">this address</a> with your payment confirmation and we'll sort it out.
+  </p>
+</div>
+
+<script src="reading-config.js"></script>
+<script>
+(function(){
+  try{
+    const email = READING_SALES_CONFIG.contactEmail;
+    if(email && email.indexOf("REPLACE_WITH") !== 0){
+      document.getElementById("contactLink").href = "mailto:" + email;
+      document.getElementById("contactLink").textContent = email;
+    }
+  }catch(e){}
+
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get("session_id");
+  const statusEl = document.getElementById("statusLine");
+  const base = (typeof READING_SALES_CONFIG !== "undefined" && READING_SALES_CONFIG.fulfillmentApiBase) || "";
+
+  if(!sessionId || !base || base.indexOf("REPLACE_WITH") === 0){
+    statusEl.textContent = "";
+    return;
+  }
+
+  const labels = {
+    prepared: "Waiting for payment confirmation…",
+    paid: "Payment confirmed — starting your reading…",
+    generating: "Writing your personalized reading…",
+    generated: "Reading complete — preparing your PDF…",
+    emailing: "Sending your PDF now…",
+    fulfilled: "✓ Your reading has been emailed!",
+    failed: "We hit a snag — we've been notified and will follow up by email.",
+    pending: "Waiting for payment confirmation…",
+  };
+
+  let attempts = 0;
+  function poll(){
+    attempts++;
+    fetch(base + "/status?session_id=" + encodeURIComponent(sessionId))
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        const label = labels[data.status] || "Checking status…";
+        statusEl.textContent = label;
+        statusEl.className = "status-line" + (data.status === "fulfilled" ? " ready" : data.status === "failed" ? " failed" : "");
+        if(data.status !== "fulfilled" && data.status !== "failed" && attempts < 40){
+          setTimeout(poll, 4000);
+        }
+      })
+      .catch(function(){ statusEl.textContent = ""; });
+  }
+  poll();
+})();
+</script>
+</body>
+</html>

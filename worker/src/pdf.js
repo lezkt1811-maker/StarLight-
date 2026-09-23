@@ -1,4 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { deriveChartFacts, describeOccupants } from "./facts.js";
 
 const PAGE_SIZE = [612, 792]; // US Letter
 const MARGIN = 54;
@@ -22,8 +23,12 @@ class Cursor {
   ensureSpace(height) {
     if (this.y - height < MARGIN) this.newPage();
   }
-  heading(text, size = 15) {
+  heading(text, size = 14, opts = {}) {
     this.ensureSpace(size + 18);
+    if (opts.kicker) {
+      this.page.drawText(opts.kicker, { x: MARGIN, y: this.y, size: 9, font: this.boldFont, color: MUTED });
+      this.y -= 12;
+    }
     this.page.drawText(text, { x: MARGIN, y: this.y, size, font: this.boldFont, color: GOLD });
     this.y -= size + 12;
   }
@@ -74,7 +79,8 @@ export async function buildReadingPdf(payload, interpretation) {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
-  const sections = interpretation || fallbackSections(payload);
+  const facts = deriveChartFacts(payload);
+  const sections = interpretation || fallbackSections(payload, facts);
   const cursor = new Cursor(doc, font, boldFont);
 
   drawCover(cursor, payload);
@@ -88,38 +94,61 @@ export async function buildReadingPdf(payload, interpretation) {
   }
 
   cursor.newPage();
-  cursor.heading("Chart Signature");
-  cursor.paragraph(sections.chartSignature);
-  cursor.heading("Core Identity");
-  cursor.paragraph(sections.coreIdentity);
+  cursor.heading("Your True-Sky Chart at a Glance", 15, { kicker: "SECTION 1" });
+  cursor.paragraph(sections.chartGlance);
+
+  cursor.newPage();
+  cursor.heading("Ophiuchus: The Hidden Thirteenth Sign", 15, { kicker: "SECTION 2" });
+  cursor.paragraph(sections.ophiuchusSection);
+
+  cursor.heading("The 13th House", 15, { kicker: "SECTION 3" });
+  cursor.paragraph(`Occupants: ${describeOccupants(facts.house13Occupants)}`, 9.5, 13);
+  cursor.spacer(4);
+  cursor.paragraph(sections.house13Section);
+
+  cursor.newPage();
+  cursor.heading("Core Self", 14, { kicker: "SECTION 4" });
+  cursor.paragraph(sections.coreSelf);
+  cursor.heading("Emotional Nature", 14, { kicker: "SECTION 5" });
+  cursor.paragraph(sections.emotionalNature);
+  cursor.heading("Mind & Communication", 14, { kicker: "SECTION 6" });
+  cursor.paragraph(sections.mindCommunication);
 
   drawPlacementsTable(cursor, payload);
 
   cursor.newPage();
-  cursor.heading("Planetary Synthesis");
-  cursor.paragraph(sections.planetarySynthesis);
-  if (sections.lilithEveAxis) {
-    cursor.heading("Lilith – Eve Axis");
-    cursor.paragraph(sections.lilithEveAxis);
-  }
+  cursor.heading("Love, Desire & Relationships", 14, { kicker: "SECTION 7" });
+  cursor.paragraph(sections.loveRelationships);
+  cursor.heading("Purpose, Growth & Direction", 14, { kicker: "SECTION 8" });
+  cursor.paragraph(sections.purposeGrowth);
+  cursor.heading("Outer Planets", 14, { kicker: "SECTION 9" });
+  cursor.paragraph(sections.outerPlanets);
 
+  cursor.newPage();
+  cursor.heading("Lilith & Eve Axis", 14, { kicker: "SECTION 10" });
+  cursor.paragraph(sections.lilithEveAxis);
+
+  cursor.heading("All 13 Houses", 14, { kicker: "SECTION 11" });
+  cursor.paragraph(sections.allHousesNarrative);
+  drawAllHousesTable(cursor, facts);
+
+  cursor.newPage();
+  cursor.heading("Major Aspect Patterns", 14, { kicker: "SECTION 12" });
+  cursor.paragraph(sections.aspectPatterns);
   drawAspectsTable(cursor, payload);
 
   cursor.newPage();
-  cursor.heading("Major Aspects");
-  cursor.paragraph(sections.majorAspectsNarrative);
-  cursor.heading("Love & Relationships");
-  cursor.paragraph(sections.loveRelationships);
-  cursor.heading("Purpose, Work & Creation");
-  cursor.paragraph(sections.purposeWorkCreation);
-
+  cursor.heading("Tropical vs. True Sky", 14, { kicker: "SECTION 13" });
+  cursor.paragraph(sections.tropicalDifferential);
   drawTropicalComparisonTable(cursor, payload);
 
   cursor.newPage();
-  cursor.heading("Integrated Message");
-  cursor.paragraph(sections.integratedMessage);
+  cursor.heading("Integrated Synthesis", 14, { kicker: "SECTION 14" });
+  cursor.paragraph(sections.integratedSynthesis);
 
   drawDisclaimer(cursor);
+
+  drawPageNumbers(doc, font);
 
   return doc.save();
 }
@@ -127,22 +156,12 @@ export async function buildReadingPdf(payload, interpretation) {
 function drawCover(cursor, payload) {
   const { page } = cursor;
   cursor.y = PAGE_SIZE[1] - 220;
-  page.drawText("StarChart13", {
-    x: MARGIN,
-    y: cursor.y,
-    size: 30,
-    font: cursor.boldFont,
-    color: GOLD,
-  });
+  page.drawText("StarChart13", { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: GOLD });
   cursor.y -= 34;
-  page.drawText("Detailed True-Sky Natal Reading", {
-    x: MARGIN,
-    y: cursor.y,
-    size: 15,
-    font: cursor.font,
-    color: INK,
-  });
-  cursor.y -= 50;
+  page.drawText("Detailed True-Sky Natal Reading", { x: MARGIN, y: cursor.y, size: 15, font: cursor.font, color: INK });
+  cursor.y -= 22;
+  page.drawText("13 Signs • 13 Houses • Ophiuchus Included", { x: MARGIN, y: cursor.y, size: 10, font: cursor.font, color: MUTED });
+  cursor.y -= 44;
 
   const c = payload.customer || {};
   const lines = [
@@ -156,7 +175,9 @@ function drawCover(cursor, payload) {
     cursor.y -= 20;
   });
 
-  cursor.y -= 20;
+  cursor.y -= 10;
+  page.drawText(`Generated: ${new Date().toISOString().slice(0, 10)}`, { x: MARGIN, y: cursor.y, size: 9, font: cursor.font, color: MUTED });
+  cursor.y -= 24;
   page.drawText(
     "Your 13 signs, all 13 houses, major aspects, and your tropical vs. true-sky differential.",
     { x: MARGIN, y: cursor.y, size: 10, font: cursor.font, color: MUTED }
@@ -174,17 +195,12 @@ async function drawWheelImage(doc, cursor, payload) {
   const scale = Math.min(maxWidth / png.width, maxHeight / png.height, 1);
   const w = png.width * scale;
   const h = png.height * scale;
-  cursor.page.drawImage(png, {
-    x: MARGIN + (maxWidth - w) / 2,
-    y: cursor.y - h,
-    width: w,
-    height: h,
-  });
+  cursor.page.drawImage(png, { x: MARGIN + (maxWidth - w) / 2, y: cursor.y - h, width: w, height: h });
   cursor.y -= h + 10;
 }
 
 function drawPlacementsTable(cursor, payload) {
-  cursor.heading("Placements");
+  cursor.heading("Placements Reference", 12);
   const widths = [95, 45, 150, 150];
   cursor.row(["Point", "House", "True Sky", "Tropical"], widths, { bold: true, size: 9.5 });
   (payload.points || []).forEach((p) => {
@@ -200,8 +216,17 @@ function drawPlacementsTable(cursor, payload) {
   });
 }
 
+function drawAllHousesTable(cursor, facts) {
+  cursor.spacer(6);
+  const widths = [55, 490];
+  cursor.row(["House", "Occupants"], widths, { bold: true, size: 9.5 });
+  for (let h = 1; h <= 13; h++) {
+    cursor.row([h, describeOccupants(facts.houseOccupants[h])], widths, { size: 9 });
+  }
+}
+
 function drawAspectsTable(cursor, payload) {
-  cursor.heading("Aspects");
+  cursor.spacer(6);
   const widths = [130, 100, 130, 80];
   cursor.row(["Point 1", "Aspect", "Point 2", "Orb"], widths, { bold: true, size: 9.5 });
   (payload.aspects || []).forEach((a) => {
@@ -210,17 +235,12 @@ function drawAspectsTable(cursor, payload) {
 }
 
 function drawTropicalComparisonTable(cursor, payload) {
-  cursor.heading("Tropical vs. True Sky");
+  cursor.spacer(6);
   const widths = [110, 150, 150, 60];
   cursor.row(["Point", "Tropical", "True Sky", "Changed"], widths, { bold: true, size: 9.5 });
   (payload.tropicalComparison || []).forEach((c) => {
     cursor.row(
-      [
-        c.point,
-        `${c.tropicalSign} ${Math.floor(c.tropicalDegree)}°`,
-        `${c.trueSkyConstellation} ${Math.floor(c.trueSkyDegree)}°`,
-        c.changedSign ? "Yes" : "",
-      ],
+      [c.point, `${c.tropicalSign} ${Math.floor(c.tropicalDegree)}°`, `${c.trueSkyConstellation} ${Math.floor(c.trueSkyDegree)}°`, c.changedSign ? "Yes" : ""],
       widths
     );
   });
@@ -232,30 +252,48 @@ function drawDisclaimer(cursor) {
   cursor.paragraph(
     "StarChart13 calculates placements against the real astronomical positions of the 13 constellations " +
       "the ecliptic actually passes through (including Ophiuchus), verified against astronomy references " +
-      "such as Sky Map and Stellarium — alongside the traditional 12-sign tropical zodiac for comparison. " +
-      "This reading is offered for reflection and entertainment purposes.",
+      "such as Sky Map and Stellarium — that part is astronomical fact. The interpretations in this reading " +
+      "are an astrological framework applied to those facts, offered for reflection and entertainment purposes.",
     9.5,
     13
   );
 }
 
-function fallbackSections(payload) {
-  const asc = payload.calculation?.ascendant;
-  const generic =
-    "We weren't able to generate the personalized narrative for this section automatically, but the " +
-    "chart data below is complete and accurate — StarChart13 will follow up with the full written " +
-    "interpretation shortly.";
+function drawPageNumbers(doc, font) {
+  const pages = doc.getPages();
+  pages.forEach((page, i) => {
+    const label = `Page ${i + 1} of ${pages.length}`;
+    const size = 8;
+    const width = font.widthOfTextAtSize(label, size);
+    page.drawText(label, { x: PAGE_SIZE[0] - MARGIN - width, y: 28, size, font, color: MUTED });
+  });
+}
+
+/* Used only when the AI call fails entirely (network/API outage). Every field is
+   built directly from the deterministic chart facts so the customer still gets a
+   complete, factually-correct — if less literary — PDF instead of nothing. */
+function fallbackSections(payload, facts) {
+  const note =
+    " (The full written interpretation for this section couldn't be generated automatically this time — " +
+    "the data above is complete and accurate, and StarChart13 will follow up with the full narrative.)";
+  const asc = facts.ascendant;
   return {
-    chartSignature: asc
-      ? `Your Ascendant falls in ${asc.constellation} — this is the lens the rest of your chart is read through.`
-      : generic,
-    coreIdentity: generic,
-    planetarySynthesis: generic,
-    lilithEveAxis: "",
-    majorAspectsNarrative: generic,
-    loveRelationships: generic,
-    purposeWorkCreation: generic,
-    integratedMessage: generic,
+    chartGlance: (asc ? `Your Ascendant is in ${asc.constellation} ${Math.floor(asc.degree)}°.` : "") + note,
+    ophiuchusSection: facts.hasOphiuchus
+      ? `Ophiuchus placements: ${describeOccupants(facts.ophiuchusPlacements)}.` + note
+      : "None of your calculated placements fall within Ophiuchus in this chart.",
+    house13Section: `13th house occupants: ${describeOccupants(facts.house13Occupants)}.` + note,
+    coreSelf: note.trim(),
+    emotionalNature: note.trim(),
+    mindCommunication: note.trim(),
+    loveRelationships: note.trim(),
+    purposeGrowth: note.trim(),
+    outerPlanets: note.trim(),
+    lilithEveAxis: facts.hasLilithOrEve ? note.trim() : "Lilith and Eve were not calculated for this chart.",
+    allHousesNarrative: note.trim(),
+    aspectPatterns: note.trim(),
+    tropicalDifferential: `${facts.changedSignPlacements.length} placement(s) changed sign between tropical and true sky.` + note,
+    integratedSynthesis: note.trim(),
   };
 }
 

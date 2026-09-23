@@ -9,19 +9,36 @@ be fulfilled by hand rather than the customer getting nothing.
 
 ## How it fits together
 
-1. Browser generates the chart, then `POST /prepare` with the computed chart
-   JSON. The worker stores it in KV under a random order id (24h TTL) and
-   returns that id.
+1. Browser generates the free chart (this is the only place the chart is ever
+   calculated — nothing on the backend recomputes it). Clicking "PREPARE MY
+   DETAILED READING" then `POST /prepare`s that exact chart JSON. The worker
+   stores it in KV as an order record (`status: "prepared"`, 30-day TTL under
+   a random order id) and returns that id.
 2. Browser opens the Stripe Payment Link with `?client_reference_id=<order id>`
-   appended, so Stripe carries that id through checkout.
+   appended — never the birth data or chart itself — so Stripe carries the id
+   through checkout and the customer can close the browser at any point after.
 3. Stripe sends a `checkout.session.completed` webhook to `POST /webhook`.
-4. The worker verifies Stripe's signature, looks up the stored chart JSON by
-   `client_reference_id`, calls Claude to write the reading, builds the PDF
-   with `pdf-lib`, and emails it via Resend to the address Stripe collected
-   at checkout.
-5. On any failure (missing payload, Claude down, Resend down, etc.) it emails
-   `CONTACT_EMAIL` with the order id and the error so you can fulfill it
-   manually — a $25 order should never just silently fail.
+4. The worker verifies Stripe's signature, confirms `payment_status === "paid"`,
+   looks up the stored order by `client_reference_id`, calls Claude to write the
+   reading (from derived chart *facts* only — see `src/facts.js` — it can never
+   alter a placement), builds the PDF with `pdf-lib`, and emails it via Resend
+   to the address Stripe collected at checkout. The order's `status` field is
+   updated at each step (`paid` → `generating` → `generated` → `emailing` →
+   `fulfilled`), and a `GET /status?session_id=...` endpoint lets the success
+   page show live progress without exposing any chart/birth data.
+5. **Idempotent by design:** Stripe can and does retry webhooks. A retry for an
+   already-`fulfilled` order (matched by order id *and* Stripe session id) is
+   detected and silently ignored — no second email, no false failure alert.
+6. On any real failure (missing payload, Claude down, Resend down, etc.) the
+   order is marked `failed` with the error recorded, and it emails
+   `CONTACT_EMAIL` with the order id and the error so you can follow up — a
+   $25 order should never just silently disappear.
+7. **Retrying a failed order:** once whatever was down (Resend, Claude, etc.)
+   is back, go to Stripe Dashboard → Developers → Webhooks → your endpoint →
+   find the `checkout.session.completed` event for that order → **Resend**.
+   Because fulfillment is keyed off the order's status (not "has this Stripe
+   event been seen before"), a `failed` order safely retries and completes —
+   the customer is never charged again.
 
 ## One-time setup
 
@@ -70,6 +87,17 @@ npx wrangler login          # opens a browser to connect your Cloudflare account
    ```js
    fulfillmentApiBase: "https://starchart13-fulfillment.<your-subdomain>.workers.dev",
    ```
+
+7. **Point the Payment Link's confirmation page at `reading-success.html`.**
+   In the Stripe Dashboard → Payment Links → open your $25 reading link →
+   edit → **After payment** → **Redirect customers to your website** → set
+   the URL to:
+   ```
+   https://starchart13.com/reading-success.html?session_id={CHECKOUT_SESSION_ID}
+   ```
+   (Stripe substitutes `{CHECKOUT_SESSION_ID}` literally — type it exactly
+   like that.) This page never performs fulfillment itself; it just confirms
+   payment and optionally polls `/status` to show progress.
 
 ## Testing before going live
 
