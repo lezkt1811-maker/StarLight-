@@ -11,7 +11,7 @@ account_id = "ff221ce86f3c0ee5904d65684b8a7dcf"
 # (name it ORDERS) -> copy the Namespace ID shown -> paste it below. Not a secret.
 [[kv_namespaces]]
 binding = "ORDERS"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "a6cc1b69004d4c0c86599630a9546f95"
 
 [vars]
 ALLOWED_ORIGIN = "https://starchart13.com"
