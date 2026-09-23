@@ -14,8 +14,7 @@ const READING_SALES_CONFIG = {
 
   // Base URL of the Cloudflare Worker (see /worker) that stores the chart data before
   // checkout and emails the finished PDF after Stripe confirms payment.
-  // REPLACE this after running `wrangler deploy` — see worker/README.md.
-  fulfillmentApiBase: "REPLACE_WITH_WORKER_URL",
+  fulfillmentApiBase: "https://starchart13-fulfillment.lezkt1811.workers.dev",
 
   // Your Cash App info — already filled in.
   cashAppCashtag: "$StarFort13",
