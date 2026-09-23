@@ -5,7 +5,7 @@ compatibility_date = "2024-09-23"
 # Not a secret — visible on the Cloudflare dashboard's Workers & Pages overview
 # page (right-hand sidebar, "Account ID"). Needed so the deploy workflow knows
 # which Cloudflare account to deploy to.
-account_id = "REPLACE_WITH_CLOUDFLARE_ACCOUNT_ID"
+account_id = "ff221ce86f3c0ee5904d65684b8a7dcf"
 
 # Create via the Cloudflare dashboard: Workers & Pages -> KV -> Create a namespace
 # (name it ORDERS) -> copy the Namespace ID shown -> paste it below. Not a secret.
