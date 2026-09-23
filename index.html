@@ -67,7 +67,7 @@
       Your 13 signs, all 13 houses, major aspects, Lilith–Eve axis,
       love, purpose, integrated synthesis, and your Tropical vs. True-Sky differential.
     </div>
-    <button type="button" onclick="sc13PrepareDetailedReading()" style="width:100%;padding:13px 14px;border-radius:11px;border:1px solid rgba(255,215,0,.8);background:linear-gradient(90deg,#7d4b00,#c58b00,#7d4b00);color:#fff8d8;font-family:Raleway,sans-serif;font-weight:900;font-size:13px;letter-spacing:.055em;cursor:pointer;box-shadow:0 0 18px rgba(255,215,0,.18);">
+    <button type="button" id="sc13PrepareBtn" onclick="sc13PrepareDetailedReading()" style="width:100%;padding:13px 14px;border-radius:11px;border:1px solid rgba(255,215,0,.8);background:linear-gradient(90deg,#7d4b00,#c58b00,#7d4b00);color:#fff8d8;font-family:Raleway,sans-serif;font-weight:900;font-size:13px;letter-spacing:.055em;cursor:pointer;box-shadow:0 0 18px rgba(255,215,0,.18);">
       PREPARE MY DETAILED READING
     </button>
     <div id="sc13ReadingProductMsg" style="font-family:Raleway,sans-serif;font-size:10px;line-height:1.45;color:rgba(255,233,168,.55);margin-top:9px;">
@@ -793,29 +793,55 @@ function sc13BuildReportPayload(){
   return payload;
 }
 
-function sc13PrepareDetailedReading(){
+async function sc13PrepareDetailedReading(){
   const msg = document.getElementById("sc13ReadingProductMsg");
+  const btn = document.getElementById("sc13PrepareBtn");
   try{
     const payload = sc13BuildReportPayload();
     const changed = payload.tropicalComparison.filter(x=>x.changedSign).length;
     const count = payload.points.length;
     const aspectCount = payload.aspects.length;
+    const readySummary =
+      '<span style="color:#8dffb0;font-weight:900;">✓ Your report data is ready.</span><br>' +
+      count + ' chart points • ' + aspectCount + ' aspects • ' + changed +
+      ' tropical/true-sky sign changes detected.<br>';
 
     if(msg){
-      msg.innerHTML =
-        '<span style="color:#8dffb0;font-weight:900;">✓ Your report data is ready.</span><br>' +
-        count + ' chart points • ' + aspectCount + ' aspects • ' + changed +
-        ' tropical/true-sky sign changes detected.<br>' +
-        '<span style="color:rgba(255,233,168,.7);">Redirecting to secure $25 Stripe checkout → automatic PDF delivery.</span>';
+      msg.innerHTML = readySummary +
+        '<span style="color:rgba(255,233,168,.7);">Connecting to secure checkout…</span>';
     }
-
     try{
       document.getElementById("sc13ReadingProduct")?.scrollIntoView({behavior:"smooth",block:"center"});
     }catch(e){}
 
-    if(READING_SALES_CONFIG.stripePaymentUrl){
-      window.open(READING_SALES_CONFIG.stripePaymentUrl, "_blank", "noopener,noreferrer");
+    if(!READING_SALES_CONFIG.stripePaymentUrl){
+      throw new Error("Checkout isn't configured yet — contact " + READING_SALES_CONFIG.contactEmail);
     }
+    if(!READING_SALES_CONFIG.fulfillmentApiBase || READING_SALES_CONFIG.fulfillmentApiBase.indexOf("REPLACE_WITH") === 0){
+      throw new Error("Delivery service isn't configured yet — contact " + READING_SALES_CONFIG.contactEmail);
+    }
+
+    if(btn) btn.disabled = true;
+    // Stash the chart data with the fulfillment worker first — a Stripe Payment Link URL can't
+    // carry the full report JSON, so we pass back a short order id as client_reference_id instead.
+    // The worker looks the data up again once Stripe's webhook confirms payment.
+    const resp = await fetch(READING_SALES_CONFIG.fulfillmentApiBase + "/prepare", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    if(!resp.ok) throw new Error("Could not reach the delivery service (status " + resp.status + ")");
+    const {orderId} = await resp.json();
+    if(!orderId) throw new Error("Delivery service didn't return an order id");
+
+    if(msg){
+      msg.innerHTML = readySummary +
+        '<span style="color:rgba(255,233,168,.7);">Redirecting to secure $25 Stripe checkout → your PDF will be emailed automatically after payment.</span>';
+    }
+
+    const stripeUrl = READING_SALES_CONFIG.stripePaymentUrl +
+      "?client_reference_id=" + encodeURIComponent(orderId);
+    window.open(stripeUrl, "_blank", "noopener,noreferrer");
     return payload;
   }catch(err){
     if(msg){
@@ -823,6 +849,8 @@ function sc13PrepareDetailedReading(){
     }
     setSt("❌ " + String(err.message || err), "st-err");
     return null;
+  } finally {
+    if(btn) btn.disabled = false;
   }
 }
 

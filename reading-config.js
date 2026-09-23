@@ -12,6 +12,11 @@ const READING_SALES_CONFIG = {
   // Stripe Payment Link for the $25 detailed reading purchase button.
   stripePaymentUrl: "https://buy.stripe.com/bJedRb8Yk78ycSsgWOgjC00",
 
+  // Base URL of the Cloudflare Worker (see /worker) that stores the chart data before
+  // checkout and emails the finished PDF after Stripe confirms payment.
+  // REPLACE this after running `wrangler deploy` — see worker/README.md.
+  fulfillmentApiBase: "REPLACE_WITH_WORKER_URL",
+
   // Your Cash App info — already filled in.
   cashAppCashtag: "$StarFort13",
   cashAppPaymentUrl: "https://cash.app/pay/link/au85j9vj",

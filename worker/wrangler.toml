@@ -1,0 +1,21 @@
+name = "starchart13-fulfillment"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Created by `wrangler kv:namespace create ORDERS` — paste the id it prints below.
+[[kv_namespaces]]
+binding = "ORDERS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[vars]
+ALLOWED_ORIGIN = "https://starchart13.com"
+FROM_EMAIL = "StarChart13 <readings@starchart13.com>"
+CONTACT_EMAIL = "katythomas96@yahoo.com"
+CLAUDE_MODEL = "claude-sonnet-5"
+
+# Secrets (never put these here — set with `wrangler secret put <NAME>`):
+#   STRIPE_SECRET_KEY       Stripe secret key (sk_live_... / sk_test_...)
+#   STRIPE_WEBHOOK_SECRET   Signing secret for the /webhook endpoint (whsec_...)
+#   RESEND_API_KEY          Resend API key (re_...)
+#   ANTHROPIC_API_KEY       Anthropic API key (sk-ant-...)
