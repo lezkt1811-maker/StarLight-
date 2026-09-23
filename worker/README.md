@@ -40,55 +40,61 @@ be fulfilled by hand rather than the customer getting nothing.
    event been seen before"), a `failed` order safely retries and completes —
    the customer is never charged again.
 
-## One-time setup
+## One-time setup — GitHub Actions deploys this automatically
+
+`.github/workflows/deploy-worker.yml` deploys this worker to Cloudflare on
+every push to `worker/**` — no terminal, no Cloudflare "Connect to Git" flow.
+It runs on GitHub's servers using the `wrangler` CLI (already a dependency
+here). Setup is: get two non-secret values into `wrangler.toml`, and put five
+secrets into the GitHub repo's own secret store — never into a file.
 
 You'll need accounts (all have free tiers that cover this): **Cloudflare**,
 **Resend**, and an **Anthropic** API key. You already have Stripe.
 
-```bash
-cd worker
-npm install
-npx wrangler login          # opens a browser to connect your Cloudflare account
-```
+1. **Cloudflare Account ID** — on the Cloudflare dashboard's Workers & Pages
+   overview page, it's shown in the right-hand sidebar. Not a secret — put it
+   in `wrangler.toml`'s `account_id` field.
 
-1. **Create the KV namespace** (stores chart data between "prepare" and "pay"):
-   ```bash
-   npx wrangler kv namespace create ORDERS
-   ```
-   Paste the `id` it prints into `wrangler.toml` under `[[kv_namespaces]]`.
+2. **KV namespace** (stores chart data between "prepare" and "pay") —
+   Cloudflare dashboard → Workers & Pages → **KV** → **Create a namespace** →
+   name it `ORDERS` → copy the **Namespace ID** it shows. Not a secret — put
+   it in `wrangler.toml`'s `[[kv_namespaces]]` → `id` field.
 
-2. **Set the secrets** (never put these in `wrangler.toml` or commit them):
-   ```bash
-   npx wrangler secret put STRIPE_SECRET_KEY       # from dashboard.stripe.com/apikeys
-   npx wrangler secret put STRIPE_WEBHOOK_SECRET    # see step 4 below
-   npx wrangler secret put RESEND_API_KEY           # from resend.com/api-keys
-   npx wrangler secret put ANTHROPIC_API_KEY        # from console.anthropic.com
-   ```
+3. **Add these as GitHub repository secrets** (repo → Settings → Secrets and
+   variables → Actions → New repository secret — never put these in any
+   file):
+   - `CLOUDFLARE_API_TOKEN` — Cloudflare dashboard → My Profile → API Tokens →
+     Create Token → use the **"Edit Cloudflare Workers"** template (it grants
+     exactly the Workers Scripts + KV permissions this needs).
+   - `STRIPE_SECRET_KEY` — dashboard.stripe.com → Developers → API keys.
+   - `RESEND_API_KEY` — resend.com → API Keys.
+   - `ANTHROPIC_API_KEY` — console.anthropic.com → API Keys.
+   - `STRIPE_WEBHOOK_SECRET` — leave for step 5 below; the workflow tolerates
+     it being unset for now (empty secret, not a missing one).
 
-3. **Deploy:**
-   ```bash
-   npx wrangler deploy
-   ```
-   This prints your worker's URL, e.g. `https://starchart13-fulfillment.<your-subdomain>.workers.dev`.
+4. **Run the deploy.** Either push any change under `worker/`, or go to the
+   repo's **Actions** tab → **Deploy fulfillment worker** → **Run workflow**.
+   Its log shows the deployed worker's URL, e.g.
+   `https://starchart13-fulfillment.<your-subdomain>.workers.dev` — copy it.
 
-4. **Point Stripe at it.** In the Stripe Dashboard → Developers → Webhooks →
+5. **Point Stripe at it.** In the Stripe Dashboard → Developers → Webhooks →
    Add endpoint:
-   - URL: `<your worker URL>/webhook`
+   - URL: `<worker URL from step 4>/webhook`
    - Event: `checkout.session.completed`
-   - Copy the endpoint's **Signing secret** (`whsec_...`) and set it as
-     `STRIPE_WEBHOOK_SECRET` (step 2), then redeploy so the new secret takes
-     effect: `npx wrangler deploy`.
+   - Copy the endpoint's **Signing secret** (`whsec_...`), set it as the
+     `STRIPE_WEBHOOK_SECRET` GitHub secret (step 3), then re-run the workflow
+     (Actions tab → **Run workflow**) so it takes effect.
 
-5. **Verify sending domain in Resend**, or use their default test domain
+6. **Verify sending domain in Resend**, or use their default test domain
    while you're testing. Update `FROM_EMAIL` in `wrangler.toml` once your
    domain is verified.
 
-6. **Wire the frontend to it.** Edit `../reading-config.js`:
+7. **Wire the frontend to it.** Edit `../reading-config.js`:
    ```js
    fulfillmentApiBase: "https://starchart13-fulfillment.<your-subdomain>.workers.dev",
    ```
 
-7. **Point the Payment Link's confirmation page at `reading-success.html`.**
+8. **Point the Payment Link's confirmation page at `reading-success.html`.**
    In the Stripe Dashboard → Payment Links → open your $25 reading link →
    edit → **After payment** → **Redirect customers to your website** → set
    the URL to:
@@ -103,11 +109,14 @@ npx wrangler login          # opens a browser to connect your Cloudflare account
 
 - Use a Stripe **test mode** secret key + a test Payment Link (or Stripe's
   test card `4242 4242 4242 4242`) so you don't spend real money testing.
-- `npx wrangler tail` streams live logs from the deployed worker — watch it
-  while you complete a test purchase to see each step (`/prepare` hit,
+- To watch what the worker is doing without a terminal: Cloudflare dashboard →
+  your worker → **Logs** tab has a live/real-time view — open it in a browser
+  tab while completing a test purchase to see each step (`/prepare` hit,
   webhook received, Claude call, email sent) or catch where it failed.
-- The Stripe CLI can also replay a fake event directly at your worker:
-  `stripe trigger checkout.session.completed` (after `stripe listen --forward-to <worker URL>/webhook`).
+- If you do have a terminal available, `npx wrangler tail` (from `worker/`)
+  does the same thing from the command line, and the Stripe CLI can replay a
+  fake event directly at the worker: `stripe trigger checkout.session.completed`
+  (after `stripe listen --forward-to <worker URL>/webhook`).
 
 ## Costs
 

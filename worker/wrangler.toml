@@ -2,7 +2,13 @@ name = "starchart13-fulfillment"
 main = "src/index.js"
 compatibility_date = "2024-09-23"
 
-# Created by `wrangler kv:namespace create ORDERS` — paste the id it prints below.
+# Not a secret — visible on the Cloudflare dashboard's Workers & Pages overview
+# page (right-hand sidebar, "Account ID"). Needed so the deploy workflow knows
+# which Cloudflare account to deploy to.
+account_id = "REPLACE_WITH_CLOUDFLARE_ACCOUNT_ID"
+
+# Create via the Cloudflare dashboard: Workers & Pages -> KV -> Create a namespace
+# (name it ORDERS) -> copy the Namespace ID shown -> paste it below. Not a secret.
 [[kv_namespaces]]
 binding = "ORDERS"
 id = "REPLACE_WITH_KV_NAMESPACE_ID"
