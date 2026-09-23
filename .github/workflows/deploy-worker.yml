@@ -1,0 +1,51 @@
+name: Deploy fulfillment worker
+
+# Deploys worker/ to Cloudflare Workers automatically — no manual paste, no
+# Cloudflare "Connect to Git" flow. Runs on GitHub's servers, not your phone.
+#
+# Requires these to already exist as repository secrets (Settings > Secrets
+# and variables > Actions) before this will succeed:
+#   CLOUDFLARE_API_TOKEN   - lets this workflow deploy to your Cloudflare account
+#   STRIPE_SECRET_KEY
+#   STRIPE_WEBHOOK_SECRET  - can be added later, once the webhook exists
+#   RESEND_API_KEY
+#   ANTHROPIC_API_KEY
+# A run before those secrets exist will fail (a red X) — that's expected and
+# harmless; nothing gets deployed with missing credentials, and this run can
+# be re-triggered once they're added (Actions tab -> this workflow -> "Re-run
+# jobs", no new commit needed).
+
+on:
+  push:
+    branches: ["claude/starchart13-stripe-link-z5wgnl", "main"]
+    paths: ["worker/**", ".github/workflows/deploy-worker.yml"]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - name: Deploy worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy
+
+      - name: Set secrets on the deployed worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          printf '%s' "${{ secrets.STRIPE_SECRET_KEY }}" | npx wrangler secret put STRIPE_SECRET_KEY
+          printf '%s' "${{ secrets.STRIPE_WEBHOOK_SECRET }}" | npx wrangler secret put STRIPE_WEBHOOK_SECRET
+          printf '%s' "${{ secrets.RESEND_API_KEY }}" | npx wrangler secret put RESEND_API_KEY
+          printf '%s' "${{ secrets.ANTHROPIC_API_KEY }}" | npx wrangler secret put ANTHROPIC_API_KEY

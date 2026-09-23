@@ -1,0 +1,26 @@
+name = "starchart13-fulfillment"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+# Not a secret — visible on the Cloudflare dashboard's Workers & Pages overview
+# page (right-hand sidebar, "Account ID"). Needed so the deploy workflow knows
+# which Cloudflare account to deploy to.
+account_id = "ff221ce86f3c0ee5904d65684b8a7dcf"
+
+# Create via the Cloudflare dashboard: Workers & Pages -> KV -> Create a namespace
+# (name it ORDERS) -> copy the Namespace ID shown -> paste it below. Not a secret.
+[[kv_namespaces]]
+binding = "ORDERS"
+id = "a6cc1b69004d4c0c86599630a9546f95"
+
+[vars]
+ALLOWED_ORIGIN = "https://starchart13.com"
+FROM_EMAIL = "StarChart13 <readings@starchart13.com>"
+CONTACT_EMAIL = "katythomas96@yahoo.com"
+CLAUDE_MODEL = "claude-sonnet-5"
+
+# Secrets (never put these here — set with `wrangler secret put <NAME>`):
+#   STRIPE_SECRET_KEY       Stripe secret key (sk_live_... / sk_test_...)
+#   STRIPE_WEBHOOK_SECRET   Signing secret for the /webhook endpoint (whsec_...)
+#   RESEND_API_KEY          Resend API key (re_...)
+#   ANTHROPIC_API_KEY       Anthropic API key (sk-ant-...)

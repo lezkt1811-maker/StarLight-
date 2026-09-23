@@ -1,0 +1,19 @@
+{
+  "name": "starchart13-fulfillment",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "bundle": "esbuild src/index.js --bundle --minify --format=esm --platform=neutral --target=es2022 --main-fields=module,main --outfile=dist/bundle.js"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "stripe": "^17.3.0",
+    "wrangler": "^3.90.0"
+  }
+}
