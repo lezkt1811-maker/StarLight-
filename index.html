@@ -1059,41 +1059,4 @@ if ('serviceWorker' in navigator) {
 </script>
 
 
-<!-- Retained for a possible future astronomy-proof feature; not part of the current
-     $25 reading purchase flow and not linked from anywhere on the page. Hidden via
-     .reading-card{display:none} and never shown (nothing calls sc13OpenProofRequest). -->
-<div class="reading-card" id="readingConfirmCard">
-  <div class="reading-confirm">
-    <h3>Your Astronomy Proof Request</h3>
-    <div class="row"><span>Name</span><span id="rcName">—</span></div>
-    <div class="row"><span>Birth date</span><span id="rcDate">—</span></div>
-    <div class="row"><span>Exact birth time</span><span id="rcTime">—</span></div>
-    <div class="row"><span>Birth location</span><span id="rcLoc">—</span></div>
-    <div class="reading-btn-row">
-      <button class="reading-continue" onclick="sc13ContinueToEmail()">Continue With This Information</button>
-      <button class="reading-edit" onclick="sc13EditInformation()">Edit Information</button>
-    </div>
-  </div>
-</div>
-
-<div class="reading-card" id="readingEmailCard">
-  <div class="reading-confirm">
-    <h3>Almost Done</h3>
-    <div class="reading-field" id="readingNameField" style="display:none;">
-      <label>Your name</label>
-      <input id="readingName" type="text" placeholder="Your name" autocomplete="name">
-    </div>
-    <div class="reading-field">
-      <label>Email address</label>
-      <input id="readingEmail" type="email" placeholder="you@example.com" autocomplete="email">
-    </div>
-    <div class="reading-field">
-      <label>Optional — anything you want noted?</label>
-      <textarea id="readingQuestion" placeholder="Anything you'd like me to know for your astronomy proof (optional)"></textarea>
-    </div>
-    <button class="reading-submit" id="readingSubmitBtn" onclick="sc13SubmitProofRequest()">Submit My Astronomy Proof Request</button>
-    <div class="reading-error" id="readingError"></div>
-    <div class="reading-back-link" onclick="sc13EditInformation()">&larr; Back</div>
-  </div>
-</div>
 </body> </html>
