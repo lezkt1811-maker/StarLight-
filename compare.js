@@ -253,6 +253,7 @@ function sc13CompareOpen(){
 
 function sc13CompareGenerate(){
   var statusEl = document.getElementById("sc13CompareStatus");
+  if(statusEl){ statusEl.textContent = "Generating comparison..."; statusEl.className = "status st-wait"; }
   try{
     var birth = sc13CompareGetBirthData();
     var core = sc13CompareComputeRaw(birth);
