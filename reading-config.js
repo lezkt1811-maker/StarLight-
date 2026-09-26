@@ -12,6 +12,15 @@ const READING_SALES_CONFIG = {
   // Stripe Payment Link for the $25 detailed reading purchase button.
   stripePaymentUrl: "https://buy.stripe.com/bJedRb8Yk78ycSsgWOgjC00",
 
+  // $7 "True-Sky Mini Reading" — a lower-cost, faster-turnaround product shown
+  // right after someone generates their free chart. This is a plain Stripe
+  // Payment Link (no automated PDF pipeline like the $25 reading) since it's
+  // delivered manually within 24 hours.
+  miniReadingPrice: 7,
+  miniReadingPriceDisplay: "$7",
+  // REPLACE this placeholder before going live:
+  miniReadingStripeUrl: "REPLACE_WITH_7_DOLLAR_STRIPE_PAYMENT_LINK",
+
   // Base URL of the Cloudflare Worker (see /worker) that stores the chart data before
   // checkout and emails the finished PDF after Stripe confirms payment.
   fulfillmentApiBase: "https://starchart13-fulfillment.lezkt1811.workers.dev",
