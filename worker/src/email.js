@@ -7,18 +7,18 @@ export async function sendReadingEmail(env, { toEmail, customerName, pdfBytes, o
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: env.FROM_EMAIL || "Celestial Chart Resurrection <readings@starchart13.com>",
+      from: env.FROM_EMAIL || "Lilith & Eve Astrology <readings@starchart13.com>",
       to: [toEmail],
       bcc: env.CONTACT_EMAIL ? [env.CONTACT_EMAIL] : undefined,
-      subject: "Your Celestial Chart Resurrection Detailed Reading (PDF attached)",
+      subject: "Your Lilith & Eve Astrology Detailed Reading (PDF attached)",
       html:
         `<p>Hi ${escapeHtml(customerName || "there")},</p>` +
-        `<p>Thank you for your Celestial Chart Resurrection detailed reading purchase. Your personalized PDF is attached.</p>` +
+        `<p>Thank you for your Lilith & Eve Astrology detailed reading purchase. Your personalized PDF is attached.</p>` +
         `<p style="color:#888;font-size:12px;">Order reference: ${escapeHtml(orderRef || "")}</p>` +
-        `<p>✨ Celestial Chart Resurrection</p>`,
+        `<p>✨ Lilith & Eve Astrology</p>`,
       attachments: [
         {
-          filename: "Celestial Chart Resurrection-Detailed-Reading.pdf",
+          filename: "Lilith-and-Eve-Astrology-Detailed-Reading.pdf",
           content: pdfBase64,
         },
       ],
@@ -42,9 +42,9 @@ export async function notifyOwner(env, { orderRef, email, error }) {
       method: "POST",
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: env.FROM_EMAIL || "Celestial Chart Resurrection <readings@starchart13.com>",
+        from: env.FROM_EMAIL || "Lilith & Eve Astrology <readings@starchart13.com>",
         to: [env.CONTACT_EMAIL],
-        subject: `Celestial Chart Resurrection order needs manual fulfillment (${orderRef || "unknown order"})`,
+        subject: `Lilith & Eve Astrology order needs manual fulfillment (${orderRef || "unknown order"})`,
         html:
           `<p>Automatic PDF delivery failed for a paid order.</p>` +
           `<p>Order: ${escapeHtml(orderRef || "unknown")}</p>` +

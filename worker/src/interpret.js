@@ -47,7 +47,7 @@ export async function generateInterpretation(env, payload) {
     tools: [
       {
         name: TOOL_NAME,
-        description: "Submit the written sections of the personalized Celestial Chart Resurrection astrology reading.",
+        description: "Submit the written sections of the personalized Lilith & Eve Astrology astrology reading.",
         input_schema: {
           type: "object",
           properties: Object.fromEntries(sectionFields.map((f) => [f, { type: "string" }])),
@@ -100,7 +100,7 @@ export async function generateInterpretation(env, payload) {
 function buildPrompt(payload, facts, sectionFields) {
   const lines = [];
   lines.push(
-    "You are writing a personalized Celestial Chart Resurrection astrology reading PDF. Celestial Chart Resurrection uses the real " +
+    "You are writing a personalized Lilith & Eve Astrology astrology reading PDF. Lilith & Eve Astrology uses the real " +
       "13-constellation \"true sky\" system (including Ophiuchus) as its primary chart, with 13 houses, " +
       "and shows a traditional 12-sign tropical comparison alongside it — never the other way around."
   );
@@ -159,7 +159,7 @@ function buildPrompt(payload, facts, sectionFields) {
     "Write warm, specific, insightful astrological interpretation grounded ONLY in the facts above — " +
       "reference real planets, constellations, and houses from the data, never generic zodiac clichés, " +
       "never a placement not listed above, and never assume a traditional 12-house chart. Clearly distinguish " +
-      "Celestial Chart Resurrection's interpretive framework from established astronomical fact where relevant (e.g. Ophiuchus's " +
+      "Lilith & Eve Astrology's interpretive framework from established astronomical fact where relevant (e.g. Ophiuchus's " +
       "existence as a constellation the ecliptic passes through is astronomy; what it means for someone is " +
       "interpretation). Avoid disclaimers, hedging, or repeating the same paragraph across sections. Write as a " +
       "confident, experienced astrologer."
@@ -171,7 +171,7 @@ function buildPrompt(payload, facts, sectionFields) {
   if (sectionFields.includes("ophiuchusSection")) {
     lines.push("- ophiuchusSection: discuss the listed Ophiuchus placement(s) prominently, by exact planet/point and house.");
   }
-  lines.push("- house13Section: dedicated section on the 13th house — its sign/area, occupants (or lack of them), and what that means in the Celestial Chart Resurrection framework. Never collapse this into a 12-house chart.");
+  lines.push("- house13Section: dedicated section on the 13th house — its sign/area, occupants (or lack of them), and what that means in the Lilith & Eve Astrology framework. Never collapse this into a 12-house chart.");
   lines.push("- coreSelf: Sun, Ascendant, and how the identity placements relate.");
   lines.push("- emotionalNature: Moon, its house, and its aspects.");
   lines.push("- mindCommunication: Mercury — sign, house, major aspects.");
@@ -190,7 +190,7 @@ function fixedNoOphiuchusText() {
   return (
     "None of your calculated placements fall within Ophiuchus this time — your Sun, Moon, Ascendant, and " +
     "other points land in the twelve more commonly recognized true-sky constellations. Ophiuchus is real " +
-    "astronomical territory the ecliptic passes through, and Celestial Chart Resurrection always checks for it, but it simply " +
+    "astronomical territory the ecliptic passes through, and Lilith & Eve Astrology always checks for it, but it simply " +
     "isn't part of your personal signature. That doesn't make your chart less \"true sky\" — every placement " +
     "here still reflects the sky's real constellation boundaries rather than the older 12-sign approximation."
   );
