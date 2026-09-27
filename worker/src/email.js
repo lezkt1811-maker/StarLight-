@@ -7,18 +7,18 @@ export async function sendReadingEmail(env, { toEmail, customerName, pdfBytes, o
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: env.FROM_EMAIL || "StarChart13 <readings@starchart13.com>",
+      from: env.FROM_EMAIL || "Plot Twist Astrology <readings@starchart13.com>",
       to: [toEmail],
       bcc: env.CONTACT_EMAIL ? [env.CONTACT_EMAIL] : undefined,
-      subject: "Your StarChart13 Detailed Reading (PDF attached)",
+      subject: "Your Plot Twist Astrology Detailed Reading (PDF attached)",
       html:
         `<p>Hi ${escapeHtml(customerName || "there")},</p>` +
-        `<p>Thank you for your StarChart13 detailed reading purchase. Your personalized PDF is attached.</p>` +
+        `<p>Thank you for your Plot Twist Astrology detailed reading purchase. Your personalized PDF is attached.</p>` +
         `<p style="color:#888;font-size:12px;">Order reference: ${escapeHtml(orderRef || "")}</p>` +
-        `<p>✨ StarChart13</p>`,
+        `<p>✨ Plot Twist Astrology</p>`,
       attachments: [
         {
-          filename: "StarChart13-Detailed-Reading.pdf",
+          filename: "Plot Twist Astrology-Detailed-Reading.pdf",
           content: pdfBase64,
         },
       ],
@@ -42,9 +42,9 @@ export async function notifyOwner(env, { orderRef, email, error }) {
       method: "POST",
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: env.FROM_EMAIL || "StarChart13 <readings@starchart13.com>",
+        from: env.FROM_EMAIL || "Plot Twist Astrology <readings@starchart13.com>",
         to: [env.CONTACT_EMAIL],
-        subject: `StarChart13 order needs manual fulfillment (${orderRef || "unknown order"})`,
+        subject: `Plot Twist Astrology order needs manual fulfillment (${orderRef || "unknown order"})`,
         html:
           `<p>Automatic PDF delivery failed for a paid order.</p>` +
           `<p>Order: ${escapeHtml(orderRef || "unknown")}</p>` +
