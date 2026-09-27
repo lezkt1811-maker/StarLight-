@@ -1,6 +1,6 @@
 {
-  "name": "Plot Twist Astrology",
-  "short_name": "Plot Twist",
+  "name": "Celestial Chart Resurrection",
+  "short_name": "Resurrection",
   "description": "13 sign astrology chart generator with Ophiuchus, based on true sky constellations.",
   "start_url": "/?source=pwa",
   "scope": "/",
