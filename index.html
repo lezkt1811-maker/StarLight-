@@ -322,11 +322,11 @@
 <div id="sc13MiniReading" style="display:none;text-align:center;margin:26px auto 14px;max-width:400px;padding:0 14px;">
   <div style="font-family:Raleway,sans-serif;font-weight:800;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:rgba(224,236,255,.6);margin-bottom:8px;">Want the shorter version?</div>
   <div style="border:1px solid rgba(255,46,209,.3);border-radius:14px;padding:16px 16px;background:rgba(255,46,209,.04);">
-    <div style="font-family:Raleway,sans-serif;font-weight:900;font-size:17px;letter-spacing:.02em;color:#EAF1FF;margin-bottom:10px;">Mini Reading &mdash; $7</div>
+    <div style="font-family:Raleway,sans-serif;font-weight:900;font-size:17px;letter-spacing:.02em;color:#EAF1FF;margin-bottom:10px;">Lilith &amp; Eve Placement Reading &mdash; $7</div>
     <ul style="text-align:left;list-style:none;padding:0;margin:0 auto 12px;max-width:260px;font-family:Trebuchet MS,sans-serif;font-size:12.5px;line-height:1.7;color:rgba(224,236,255,.85);">
-      <li>✦ Sun, Moon &amp; Rising</li>
-      <li>✦ Ophiuchus placement</li>
-      <li>✦ 13th-house placement</li>
+      <li>✦ Black Moon Lilith placement</li>
+      <li>✦ Eve placement</li>
+      <li>✦ What your Lilith&ndash;Eve axis means</li>
       <li>✦ Short personalized interpretation</li>
     </ul>
     <div style="font-family:Raleway,sans-serif;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:rgba(224,236,255,.5);margin-bottom:12px;">Delivered within 24 hours</div>
@@ -1270,9 +1270,9 @@ function sc13DownloadReportPayload(){
   }
 }
 
-/* $7 "True-Sky Mini Reading" — a plain Stripe Payment Link, no worker/order-prep
-   step, since this lower-cost product is delivered manually within 24 hours
-   rather than through the automated $25 PDF pipeline. */
+/* $7 "Lilith & Eve Placement Reading" — a plain Stripe Payment Link, no worker/
+   order-prep step, since this lower-cost product is delivered manually within
+   24 hours rather than through the automated $25 PDF pipeline. */
 function sc13OpenMiniReading(){
   const msg = document.getElementById("sc13MiniReadingMsg");
   if(!READING_SALES_CONFIG.miniReadingStripeUrl || READING_SALES_CONFIG.miniReadingStripeUrl.indexOf("REPLACE_WITH") === 0){
