@@ -15,7 +15,7 @@ id = "a6cc1b69004d4c0c86599630a9546f95"
 
 [vars]
 ALLOWED_ORIGIN = "https://starchart13.com"
-FROM_EMAIL = "StarChart13 <readings@starchart13.com>"
+FROM_EMAIL = "Lilith and Eve Astrology <readings@starchart13.com>"
 CONTACT_EMAIL = "katythomas96@yahoo.com"
 CLAUDE_MODEL = "claude-sonnet-5"
 
