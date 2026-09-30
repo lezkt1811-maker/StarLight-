@@ -329,9 +329,9 @@
       <li>✦ What your Lilith&ndash;Eve axis means</li>
       <li>✦ Short personalized interpretation</li>
     </ul>
-    <div style="font-family:Raleway,sans-serif;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:rgba(224,236,255,.5);margin-bottom:12px;">Delivered within 24 hours</div>
-    <button type="button" onclick="sc13OpenMiniReading()" style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,46,209,.5);background:transparent;color:#FF9FE0;font-family:Raleway,sans-serif;font-weight:800;font-size:13px;letter-spacing:.03em;cursor:pointer;">GET MY $7 READING</button>
-    <div id="sc13MiniReadingMsg" style="font-family:Raleway,sans-serif;font-size:10.5px;line-height:1.4;margin-top:10px;"></div>
+    <div style="font-family:Raleway,sans-serif;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:rgba(224,236,255,.5);margin-bottom:12px;">Delivered automatically by email</div>
+    <button type="button" id="sc13MiniReadingBtn" onclick="sc13OpenMiniReading()" style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,46,209,.5);background:transparent;color:#FF9FE0;font-family:Raleway,sans-serif;font-weight:800;font-size:13px;letter-spacing:.03em;cursor:pointer;">GET MY $7 READING</button>
+    <div id="sc13MiniReadingMsg" style="font-family:Raleway,sans-serif;font-size:10px;line-height:1.45;color:rgba(224,236,255,0.75);margin-top:10px;">Generate your free chart first. Payment is connected after the report data is prepared.</div>
   </div>
 </div>
 
@@ -1069,11 +1069,48 @@ function sc13ReportPointName(name){
   })[name] || name;
 }
 
+/* Both paid readings promise Black Moon Lilith / Eve as part of what's included,
+   but those points are only in pData if the visitor happened to check "Include
+   Lilith, Eve & Lots" before generating their free chart — an easy-to-miss
+   checkbox that has nothing to do with whether they're paying for a report that
+   explicitly lists this axis. Rather than silently ship "Lilith and Eve were not
+   calculated for this chart" in something someone paid for, compute them here
+   from the same stored UTC time and Ascendant the free chart already used, with
+   the exact same math _doGenerate() uses (getSacredLunarPoints + signOf/houseOfCW),
+   and append them to a COPY of pData — the visible wheel/table is never touched. */
+function sc13EnsureLilithEve(pData, utcISO){
+  const hasLilith = pData.some(function(p){ return p.name === "BlackMoonLilith"; });
+  const hasEve = pData.some(function(p){ return p.name === "Eve"; });
+  if(hasLilith && hasEve) return pData;
+  const A = window.Astronomy;
+  if(!A || !utcISO) return pData;
+  try{
+    const time = A.MakeTime(new Date(utcISO));
+    const sacred = getSacredLunarPoints(time);
+    if(!sacred) return pData;
+    const ascPoint = pData.find(function(p){ return p.name === "Ascendant"; });
+    const ascLon = ascPoint ? ascPoint.lon : 0;
+    function buildPoint(name, lon){
+      const cw = eclToCW(lon, ascLon);
+      const si = signOf(lon);
+      return { name:name, lon:lon, rx:false, sacred:true, cw:cw, signN:si.sg.n, signS:si.sg.s, degInSign:si.d, house:houseOfCW(cw) };
+    }
+    const extra = [];
+    if(!hasLilith) extra.push(buildPoint("BlackMoonLilith", sacred.apogeeLon));
+    if(!hasEve) extra.push(buildPoint("Eve", sacred.perigeeLon));
+    return pData.concat(extra);
+  }catch(e){
+    console.warn("Could not compute Lilith/Eve for paid reading", e);
+    return pData;
+  }
+}
+
 function sc13BuildReportPayload(){
   const c = window.sc13LastChart;
   if(!c || !Array.isArray(c.pData) || !c.pData.length){
     throw new Error("Generate the Lilith and Eve Astrology wheel first.");
   }
+  const patchedPData = sc13EnsureLilithEve(c.pData, c.utcISO);
 
   const name = (document.getElementById("iName")?.value || "").trim();
   const city = (document.getElementById("cityInput")?.value || "").trim();
@@ -1084,7 +1121,7 @@ function sc13BuildReportPayload(){
   const lat = Number(document.getElementById("iLat")?.value);
   const lon = Number(document.getElementById("iLon")?.value);
 
-  const points = c.pData.map(function(p){
+  const points = patchedPData.map(function(p){
     const tropical = sc13ReportTropicalSign(p.lon);
     return {
       key: p.name,
@@ -1270,17 +1307,119 @@ function sc13DownloadReportPayload(){
   }
 }
 
-/* $7 "Lilith & Eve Placement Reading" — a plain Stripe Payment Link, no worker/
-   order-prep step, since this lower-cost product is delivered manually within
-   24 hours rather than through the automated $25 PDF pipeline. */
-function sc13OpenMiniReading(){
-  const msg = document.getElementById("sc13MiniReadingMsg");
-  if(!READING_SALES_CONFIG.miniReadingStripeUrl || READING_SALES_CONFIG.miniReadingStripeUrl.indexOf("REPLACE_WITH") === 0){
-    if(msg) msg.innerHTML = '<span style="color:#ff8f8f;font-weight:900;">Checkout isn\'t configured yet — contact ' + READING_SALES_CONFIG.contactEmail + '</span>';
-    return;
+/* $7 "Lilith & Eve Placement Reading" — same prepare-then-checkout pattern as the
+   $25 reading (sc13PrepareDetailedReading), just a smaller payload and a
+   different Stripe Payment Link, so it gets the same automated PDF-by-email
+   delivery instead of a manual 24-hour turnaround. */
+function sc13BuildMiniReportPayload(){
+  const c = window.sc13LastChart;
+  if(!c || !Array.isArray(c.pData) || !c.pData.length){
+    throw new Error("Generate your free chart first.");
   }
-  if(msg) msg.innerHTML = "";
-  window.open(READING_SALES_CONFIG.miniReadingStripeUrl, "_blank", "noopener,noreferrer");
+  const patchedPData = sc13EnsureLilithEve(c.pData, c.utcISO);
+
+  const name = (document.getElementById("iName")?.value || "").trim();
+  const city = (document.getElementById("cityInput")?.value || "").trim();
+  const birthDate = (document.getElementById("iDate")?.value || "").trim();
+  const hh = String(document.getElementById("iHour")?.value || "0").padStart(2,"0");
+  const mm = String(document.getElementById("iMin")?.value || "0").padStart(2,"0");
+  const timezone = (document.getElementById("iTz")?.value || "").trim();
+  const lat = Number(document.getElementById("iLat")?.value);
+  const lon = Number(document.getElementById("iLon")?.value);
+
+  const points = patchedPData.map(function(p){
+    const tropical = sc13ReportTropicalSign(p.lon);
+    return {
+      key: p.name,
+      name: sc13ReportPointName(p.name),
+      longitude: Number(p.lon),
+      retrograde: !!p.rx,
+      sacred: !!p.sacred,
+      house: Number(p.house || 0),
+      trueSky: {
+        constellation: p.signN || p.sign || "",
+        symbol: p.signS || "",
+        degree: Number(p.degInSign || 0)
+      },
+      tropical: {
+        sign: tropical.sign,
+        degree: tropical.degree
+      }
+    };
+  });
+
+  return {
+    schema: "starchart13-mini-reading",
+    schemaVersion: 1,
+    product: {
+      name: "Lilith & Eve Placement Reading",
+      priceUSD: 7,
+      format: "PDF"
+    },
+    customer: {
+      name: name,
+      birthDate: birthDate,
+      birthTime24h: hh + ":" + mm,
+      birthLocation: city,
+      latitude: Number.isFinite(lat) ? lat : null,
+      longitude: Number.isFinite(lon) ? lon : null,
+      timezone: timezone
+    },
+    calculation: {
+      source: "Lilith and Eve Astrology free wheel",
+      utcISO: c.utcISO || null,
+      offsetHours: Number.isFinite(Number(c.offsetHours)) ? Number(c.offsetHours) : null,
+      generatedAt: c.generatedAt || new Date().toISOString(),
+      ascendant: c.ascInfo ? {
+        constellation: c.ascInfo.sg?.n || "",
+        degree: Number(c.ascInfo.d || 0)
+      } : null,
+      midheaven: c.mcInfo ? {
+        constellation: c.mcInfo.sg?.n || "",
+        degree: Number(c.mcInfo.d || 0)
+      } : null
+    },
+    points: points
+  };
+}
+
+async function sc13OpenMiniReading(){
+  const msg = document.getElementById("sc13MiniReadingMsg");
+  const btn = document.getElementById("sc13MiniReadingBtn");
+  try{
+    if(!READING_SALES_CONFIG.miniReadingStripeUrl || READING_SALES_CONFIG.miniReadingStripeUrl.indexOf("REPLACE_WITH") === 0){
+      throw new Error("Checkout isn't configured yet — contact " + READING_SALES_CONFIG.contactEmail);
+    }
+    if(!READING_SALES_CONFIG.fulfillmentApiBase || READING_SALES_CONFIG.fulfillmentApiBase.indexOf("REPLACE_WITH") === 0){
+      throw new Error("Delivery service isn't configured yet — contact " + READING_SALES_CONFIG.contactEmail);
+    }
+
+    const payload = sc13BuildMiniReportPayload();
+
+    if(msg) msg.innerHTML = '<span style="color:rgba(224,236,255,0.95);">Preparing your order…</span>';
+    if(btn) btn.disabled = true;
+
+    const resp = await fetch(READING_SALES_CONFIG.fulfillmentApiBase + "/prepare", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    if(!resp.ok) throw new Error("Could not reach the delivery service (status " + resp.status + ")");
+    const {orderId} = await resp.json();
+    if(!orderId) throw new Error("Delivery service didn't return an order id");
+
+    if(msg){
+      msg.innerHTML = '<span style="color:rgba(224,236,255,0.95);">Redirecting to secure $7 Stripe checkout → your PDF will be emailed automatically after payment.</span>';
+    }
+
+    const stripeUrl = READING_SALES_CONFIG.miniReadingStripeUrl +
+      "?client_reference_id=" + encodeURIComponent(orderId);
+    window.open(stripeUrl, "_blank", "noopener,noreferrer");
+  }catch(err){
+    if(msg) msg.innerHTML = '<span style="color:#ff8f8f;font-weight:900;">' + String(err.message || err) + '</span>';
+  }finally{
+    if(btn) btn.disabled = false;
+  }
 }
 
 

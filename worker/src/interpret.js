@@ -186,6 +186,111 @@ function buildPrompt(payload, facts, sectionFields) {
   return lines.join("\n");
 }
 
+const MINI_TOOL_NAME = "write_mini_reading_sections";
+const MINI_SECTION_FIELDS = ["lilithSection", "eveSection", "axisSynthesis"];
+
+/* Short-form counterpart to generateInterpretation() for the $7 "Lilith & Eve
+   Placement Reading" — same Claude tool-call pattern, a much smaller schema and
+   prompt since this product covers only Black Moon Lilith, Eve, and the axis
+   between them (never the full 13-sign chart the $25 reading promises). */
+export async function generateMiniInterpretation(env, payload) {
+  const model = env.CLAUDE_MODEL || "claude-sonnet-5";
+  const facts = deriveChartFacts(payload);
+
+  const body = {
+    model,
+    max_tokens: 1200,
+    messages: [
+      {
+        role: "user",
+        content: buildMiniPrompt(payload, facts),
+      },
+    ],
+    tools: [
+      {
+        name: MINI_TOOL_NAME,
+        description: "Submit the written sections of the personalized Lilith & Eve Placement Reading.",
+        input_schema: {
+          type: "object",
+          properties: Object.fromEntries(MINI_SECTION_FIELDS.map((f) => [f, { type: "string" }])),
+          required: MINI_SECTION_FIELDS,
+        },
+      },
+    ],
+    tool_choice: { type: "tool", name: MINI_TOOL_NAME },
+  };
+
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`Anthropic API error ${resp.status}: ${text}`);
+  }
+
+  const data = await resp.json();
+  const toolUse = (data.content || []).find(
+    (block) => block.type === "tool_use" && block.name === MINI_TOOL_NAME
+  );
+  if (!toolUse) throw new Error("Anthropic response had no tool_use block");
+
+  const sections = toolUse.input;
+  for (const field of MINI_SECTION_FIELDS) {
+    if (typeof sections[field] !== "string" || !sections[field].trim()) {
+      throw new Error(`Anthropic response missing required section "${field}"`);
+    }
+  }
+  return sections;
+}
+
+function buildMiniPrompt(payload, facts) {
+  const lines = [];
+  lines.push(
+    "You are writing a short, personalized \"Lilith & Eve Placement Reading\" — a focused " +
+      "$7 mini reading from Lilith and Eve Astrology covering only Black Moon Lilith and Eve " +
+      "(lunar apogee/perigee interpretive points) in the customer's True-Sky chart."
+  );
+  lines.push("");
+  lines.push(`Customer name: ${payload.customer?.name || "the customer"}`);
+  lines.push("");
+  lines.push("=== GROUND TRUTH (already calculated — do not recompute, do not contradict) ===");
+  lines.push(
+    facts.lilithPoint
+      ? `Black Moon Lilith: House ${facts.lilithPoint.house}, True Sky ${facts.lilithPoint.trueSky.constellation} ${Math.floor(facts.lilithPoint.trueSky.degree)}°`
+      : "Black Moon Lilith: not calculated for this chart."
+  );
+  lines.push(
+    facts.evePoint
+      ? `Eve: House ${facts.evePoint.house}, True Sky ${facts.evePoint.trueSky.constellation} ${Math.floor(facts.evePoint.trueSky.degree)}°`
+      : "Eve: not calculated for this chart."
+  );
+  if (facts.ascendant) {
+    lines.push(`For context, Ascendant: ${facts.ascendant.constellation} ${Math.floor(facts.ascendant.degree)}°`);
+  }
+  lines.push("=== END GROUND TRUTH ===");
+  lines.push("");
+  lines.push(
+    "Write warm, specific, insightful interpretation grounded ONLY in the facts above. Never invent " +
+      "a placement not listed. Keep this clearly symbolic/astrological interpretation, not scientific " +
+      "fact. Avoid disclaimers, hedging, or generic zodiac clichés. Write as a confident, experienced " +
+      "astrologer."
+  );
+  lines.push("");
+  lines.push(`Call the ${MINI_TOOL_NAME} tool with exactly these fields: ${MINI_SECTION_FIELDS.join(", ")}.`);
+  lines.push("Field guide:");
+  lines.push("- lilithSection: 2-3 sentences on this person's Black Moon Lilith placement (sign, house) and what it means for autonomy, instinct, and what they refuse to suppress.");
+  lines.push("- eveSection: 2-3 sentences on this person's Eve placement (sign, house) and what it means for embodiment, closeness, and intimacy.");
+  lines.push("- axisSynthesis: 2-3 sentences tying Lilith and Eve together as a polarity in this specific chart — how this person might balance autonomy and connection.");
+  return lines.join("\n");
+}
+
 function fixedNoOphiuchusText() {
   return (
     "None of your calculated placements fall within Ophiuchus this time — your Sun, Moon, Ascendant, and " +

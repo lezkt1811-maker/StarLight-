@@ -1,5 +1,7 @@
-export async function sendReadingEmail(env, { toEmail, customerName, pdfBytes, orderRef }) {
+export async function sendReadingEmail(env, { toEmail, customerName, pdfBytes, orderRef, productName, filename }) {
   const pdfBase64 = bytesToBase64(pdfBytes);
+  const product = productName || "Lilith and Eve Astrology Detailed Reading";
+  const attachmentName = filename || "Lilith-and-Eve-Astrology-Detailed-Reading.pdf";
   const resp = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -10,15 +12,15 @@ export async function sendReadingEmail(env, { toEmail, customerName, pdfBytes, o
       from: env.FROM_EMAIL || "Lilith and Eve Astrology <readings@starchart13.com>",
       to: [toEmail],
       bcc: env.CONTACT_EMAIL ? [env.CONTACT_EMAIL] : undefined,
-      subject: "Your Lilith and Eve Astrology Detailed Reading (PDF attached)",
+      subject: `Your ${product} (PDF attached)`,
       html:
         `<p>Hi ${escapeHtml(customerName || "there")},</p>` +
-        `<p>Thank you for your Lilith and Eve Astrology detailed reading purchase. Your personalized PDF is attached.</p>` +
+        `<p>Thank you for your ${escapeHtml(product)} purchase. Your personalized PDF is attached.</p>` +
         `<p style="color:#888;font-size:12px;">Order reference: ${escapeHtml(orderRef || "")}</p>` +
         `<p>✨ Lilith and Eve Astrology</p>`,
       attachments: [
         {
-          filename: "Lilith-and-Eve-Astrology-Detailed-Reading.pdf",
+          filename: attachmentName,
           content: pdfBase64,
         },
       ],

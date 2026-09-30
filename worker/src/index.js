@@ -1,6 +1,8 @@
-import { buildReadingPdf } from "./pdf.js";
-import { generateInterpretation } from "./interpret.js";
+import { buildReadingPdf, buildMiniReadingPdf } from "./pdf.js";
+import { generateInterpretation, generateMiniInterpretation } from "./interpret.js";
 import { sendReadingEmail, notifyOwner } from "./email.js";
+
+const VALID_SCHEMAS = ["starchart13-detailed-reading", "starchart13-mini-reading"];
 import { STATUS, createOrder, getOrder, getOrderIdBySession, setStatus } from "./orders.js";
 import { verifyStripeSignature } from "./verifyStripeSignature.js";
 
@@ -50,7 +52,7 @@ async function handlePrepare(request, env) {
   } catch (e) {
     return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers });
   }
-  if (!payload || payload.schema !== "starchart13-detailed-reading" || !Array.isArray(payload.points) || !payload.points.length) {
+  if (!payload || !VALID_SCHEMAS.includes(payload.schema) || !Array.isArray(payload.points) || !payload.points.length) {
     return new Response(JSON.stringify({ error: "Unrecognized or empty report payload — generate your chart first." }), { status: 400, headers });
   }
 
@@ -140,6 +142,8 @@ async function fulfillOrder(env, session) {
     return;
   }
 
+  const isMini = order.payload.schema === "starchart13-mini-reading";
+
   try {
     if (!email) throw new Error("Checkout session had no customer email");
 
@@ -148,12 +152,27 @@ async function fulfillOrder(env, session) {
 
     let interpretation = null;
     try {
-      interpretation = await generateInterpretation(env, order.payload);
+      interpretation = isMini
+        ? await generateMiniInterpretation(env, order.payload)
+        : await generateInterpretation(env, order.payload);
     } catch (err) {
+      // The customer still gets a PDF (deterministic fallback text below), so this
+      // isn't a hard failure — but it means every AI-written section in their paid
+      // reading just got replaced with a placeholder sentence, and that must not
+      // happen silently. Tell the owner immediately, with the real error (usually
+      // an Anthropic auth/config/model problem), so they can catch it before a
+      // customer has to report it themselves.
       console.error("AI interpretation failed, falling back to deterministic PDF text:", err.message);
+      await notifyOwner(env, {
+        orderRef: stripeSessionId,
+        email,
+        error: `AI interpretation failed — customer's PDF will use placeholder text instead of a written reading. Underlying error: ${err.message}`,
+      });
     }
 
-    const pdfBytes = await buildReadingPdf(order.payload, interpretation);
+    const pdfBytes = isMini
+      ? await buildMiniReadingPdf(order.payload, interpretation)
+      : await buildReadingPdf(order.payload, interpretation);
     order = await setStatus(env, order, STATUS.GENERATED);
 
     order = await setStatus(env, order, STATUS.EMAILING);
@@ -162,6 +181,8 @@ async function fulfillOrder(env, session) {
       customerName: order.payload.customer?.name,
       pdfBytes,
       orderRef: stripeSessionId,
+      productName: order.payload.product?.name,
+      filename: isMini ? "Lilith-and-Eve-Placement-Reading.pdf" : "Lilith-and-Eve-Astrology-Detailed-Reading.pdf",
     });
 
     await setStatus(env, order, STATUS.FULFILLED, { lastError: null });

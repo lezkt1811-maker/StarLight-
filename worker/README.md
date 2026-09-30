@@ -1,11 +1,19 @@
 # StarChart13 fulfillment worker
 
-Handles what the static site can't: after someone pays for the $25 detailed
-reading on [buy.stripe.com/bJedRb8Yk78ycSsgWOgjC00](https://buy.stripe.com/bJedRb8Yk78ycSsgWOgjC00),
-this Cloudflare Worker verifies the payment, asks Claude to write the
-personalized interpretation, renders the PDF, and emails it to the customer.
-If anything in that chain fails, it emails **you** instead so the order can
-be fulfilled by hand rather than the customer getting nothing.
+Handles what the static site can't: after someone pays for either paid
+reading — the $25 Full 13-Sign Astrology Reading or the $7 Lilith & Eve
+Placement Reading — this Cloudflare Worker verifies the payment, asks Claude
+to write the personalized interpretation, renders the PDF, and emails it to
+the customer. If anything in that chain fails, it emails **you** instead so
+the order can be fulfilled by hand rather than the customer getting nothing.
+
+Both products share this exact same `/prepare` → Stripe → `/webhook` →
+generate → email pipeline; the only difference is which Stripe Payment Link
+the browser opens and which `schema` the stored order payload carries
+(`starchart13-detailed-reading` vs `starchart13-mini-reading`), which
+`fulfillOrder()` in `src/index.js` branches on to call the full or mini
+version of `interpret.js`/`pdf.js`. Adding a third reading tier later means
+extending that same branch, not building a new pipeline.
 
 ## How it fits together
 
