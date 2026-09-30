@@ -3,7 +3,7 @@ import { deriveChartFacts, describeOccupants } from "./facts.js";
 
 const PAGE_SIZE = [612, 792]; // US Letter
 const MARGIN = 54;
-const GOLD = rgb(0.63, 0.47, 0);
+const ACCENT = rgb(0.29, 0.09, 0.45); // deep violet — matches the site's purple/pink brand palette
 const INK = rgb(0.12, 0.12, 0.14);
 const MUTED = rgb(0.4, 0.4, 0.42);
 
@@ -29,7 +29,7 @@ class Cursor {
       this.page.drawText(opts.kicker, { x: MARGIN, y: this.y, size: 9, font: this.boldFont, color: MUTED });
       this.y -= 12;
     }
-    this.page.drawText(text, { x: MARGIN, y: this.y, size, font: this.boldFont, color: GOLD });
+    this.page.drawText(text, { x: MARGIN, y: this.y, size, font: this.boldFont, color: ACCENT });
     this.y -= size + 12;
   }
   paragraph(text, size = 10.5, lineHeight = 15) {
@@ -201,7 +201,7 @@ export async function buildMiniReadingPdf(payload, interpretation) {
 function drawMiniCover(cursor, payload) {
   const { page } = cursor;
   cursor.y = PAGE_SIZE[1] - 220;
-  page.drawText("Lilith and Eve Astrology", { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: GOLD });
+  page.drawText("Lilith and Eve Astrology", { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: ACCENT });
   cursor.y -= 34;
   page.drawText("Lilith & Eve Placement Reading", { x: MARGIN, y: cursor.y, size: 15, font: cursor.font, color: INK });
   cursor.y -= 22;
@@ -244,7 +244,7 @@ function fallbackMiniSections(facts) {
 function drawCover(cursor, payload) {
   const { page } = cursor;
   cursor.y = PAGE_SIZE[1] - 220;
-  page.drawText("Lilith and Eve Astrology", { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: GOLD });
+  page.drawText("Lilith and Eve Astrology", { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: ACCENT });
   cursor.y -= 34;
   page.drawText("Detailed True-Sky Natal Reading", { x: MARGIN, y: cursor.y, size: 15, font: cursor.font, color: INK });
   cursor.y -= 22;
