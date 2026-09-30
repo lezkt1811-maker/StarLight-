@@ -153,6 +153,94 @@ export async function buildReadingPdf(payload, interpretation) {
   return doc.save();
 }
 
+/* Short-form counterpart to buildReadingPdf() for the $7 "Lilith & Eve Placement
+   Reading" — same Cursor/PDF plumbing, a fraction of the pages, since this
+   product is scoped to Black Moon Lilith, Eve, and the axis between them. */
+export async function buildMiniReadingPdf(payload, interpretation) {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
+  const facts = deriveChartFacts(payload);
+  const sections = interpretation || fallbackMiniSections(facts);
+  const cursor = new Cursor(doc, font, boldFont);
+
+  drawMiniCover(cursor, payload);
+
+  cursor.newPage();
+  cursor.heading("Black Moon Lilith", 15, { kicker: "SECTION 1" });
+  cursor.paragraph(
+    facts.lilithPoint
+      ? `Placement: ${facts.lilithPoint.trueSky.constellation} ${Math.floor(facts.lilithPoint.trueSky.degree)}°, House ${facts.lilithPoint.house}.`
+      : "Not calculated for this chart.",
+    9.5,
+    13
+  );
+  cursor.spacer(4);
+  cursor.paragraph(sections.lilithSection);
+
+  cursor.heading("Eve", 15, { kicker: "SECTION 2" });
+  cursor.paragraph(
+    facts.evePoint
+      ? `Placement: ${facts.evePoint.trueSky.constellation} ${Math.floor(facts.evePoint.trueSky.degree)}°, House ${facts.evePoint.house}.`
+      : "Not calculated for this chart.",
+    9.5,
+    13
+  );
+  cursor.spacer(4);
+  cursor.paragraph(sections.eveSection);
+
+  cursor.heading("The Lilith–Eve Axis", 15, { kicker: "SECTION 3" });
+  cursor.paragraph(sections.axisSynthesis);
+
+  drawDisclaimer(cursor);
+  drawPageNumbers(doc, font);
+
+  return doc.save();
+}
+
+function drawMiniCover(cursor, payload) {
+  const { page } = cursor;
+  cursor.y = PAGE_SIZE[1] - 220;
+  page.drawText("Lilith and Eve Astrology", { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: GOLD });
+  cursor.y -= 34;
+  page.drawText("Lilith & Eve Placement Reading", { x: MARGIN, y: cursor.y, size: 15, font: cursor.font, color: INK });
+  cursor.y -= 22;
+  page.drawText("Black Moon Lilith • Eve • The Axis Between Them", { x: MARGIN, y: cursor.y, size: 10, font: cursor.font, color: MUTED });
+  cursor.y -= 44;
+
+  const c = payload.customer || {};
+  const lines = [
+    c.name ? `Prepared for: ${c.name}` : null,
+    c.birthDate ? `Birth date: ${c.birthDate}` : null,
+    c.birthTime24h ? `Birth time: ${c.birthTime24h}` : null,
+    c.birthLocation ? `Birth location: ${c.birthLocation}` : null,
+  ].filter(Boolean);
+  lines.forEach((l) => {
+    page.drawText(l, { x: MARGIN, y: cursor.y, size: 12, font: cursor.font, color: INK });
+    cursor.y -= 20;
+  });
+
+  cursor.y -= 10;
+  page.drawText(`Generated: ${new Date().toISOString().slice(0, 10)}`, { x: MARGIN, y: cursor.y, size: 9, font: cursor.font, color: MUTED });
+}
+
+function fallbackMiniSections(facts) {
+  const note =
+    " (The full written interpretation couldn't be generated automatically this time — " +
+    "the data above is complete and accurate, and Lilith and Eve Astrology will follow up with the full narrative.)";
+  return {
+    lilithSection:
+      (facts.lilithPoint
+        ? `Black Moon Lilith is in ${facts.lilithPoint.trueSky.constellation}, house ${facts.lilithPoint.house}.`
+        : "Black Moon Lilith was not calculated for this chart.") + note,
+    eveSection:
+      (facts.evePoint
+        ? `Eve is in ${facts.evePoint.trueSky.constellation}, house ${facts.evePoint.house}.`
+        : "Eve was not calculated for this chart.") + note,
+    axisSynthesis: note.trim(),
+  };
+}
+
 function drawCover(cursor, payload) {
   const { page } = cursor;
   cursor.y = PAGE_SIZE[1] - 220;
