@@ -305,6 +305,22 @@
   };
 
 
+  /* Lighten (positive percent) or darken (negative percent) a hex color
+     by blending toward white/black -- used to shade planet spheres. */
+  function shadeColor(hex, percent) {
+    const n = parseInt(hex.slice(1), 16);
+    const r = (n >> 16) & 0xff;
+    const g = (n >> 8) & 0xff;
+    const b = n & 0xff;
+    const t = percent < 0 ? 0 : 255;
+    const p = Math.abs(percent);
+    const nr = Math.round((t - r) * p) + r;
+    const ng = Math.round((t - g) * p) + g;
+    const nb = Math.round((t - b) * p) + b;
+    return "rgb(" + nr + "," + ng + "," + nb + ")";
+  }
+
+
   /* =========================================================
      BASIC MATH
      ========================================================= */
@@ -1137,10 +1153,10 @@
         ctx.save();
 
         ctx.strokeStyle =
-          "rgba(193,107,255,.78)";
+          "rgba(193,107,255,.7)";
 
         ctx.lineWidth =
-          1.35;
+          0.8;
 
         ctx.lineCap =
           "round";
@@ -1149,10 +1165,10 @@
           "round";
 
         ctx.shadowColor =
-          "rgba(179,76,255,.45)";
+          "rgba(179,76,255,.35)";
 
         ctx.shadowBlur =
-          5;
+          2;
 
 
         /* DRAW REAL STAR CONNECTIONS */
@@ -1459,6 +1475,76 @@
      PLANETS
      ========================================================= */
 
+  /* Draws a small shaded sphere for a planet instead of a flat text glyph,
+     with a highlight toward the upper-left and a shadow toward the lower-
+     right for a 3D look. Saturn gets a tilted ring drawn behind and in
+     front of the sphere. Purely visual -- does not touch p.lon/position. */
+  EclipticView.prototype._drawPlanetIcon =
+    function(x, y, radius, name, color, selected) {
+
+      const ctx = this.ctx;
+      const light = shadeColor(color, 0.55);
+      const dark = shadeColor(color, -0.45);
+
+      if (selected) {
+        ctx.save();
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 16;
+      }
+
+      if (name === "Saturn") {
+        const rx = radius * 1.9;
+        const ry = radius * 0.62;
+        const tilt = -0.36;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(tilt);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rx, ry, 0, Math.PI * 0.08, Math.PI * 0.92);
+        ctx.strokeStyle = shadeColor(color, 0.15);
+        ctx.lineWidth = Math.max(1.4, radius * 0.22);
+        ctx.globalAlpha = 0.9;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      const grad = ctx.createRadialGradient(
+        x - radius * 0.35, y - radius * 0.35, radius * 0.1,
+        x, y, radius
+      );
+      grad.addColorStop(0, light);
+      grad.addColorStop(0.55, color);
+      grad.addColorStop(1, dark);
+
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      if (name === "Saturn") {
+        const rx = radius * 1.9;
+        const ry = radius * 0.62;
+        const tilt = -0.36;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(tilt);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rx, ry, 0, Math.PI * 1.08, Math.PI * 1.92);
+        ctx.strokeStyle = shadeColor(color, 0.15);
+        ctx.lineWidth = Math.max(1.4, radius * 0.22);
+        ctx.globalAlpha = 0.9;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      if (selected) {
+        ctx.restore();
+      }
+    };
+
+
   EclipticView.prototype._drawPlanets =
     function() {
 
@@ -1597,48 +1683,14 @@
           p.name;
 
 
-        ctx.save();
-
-
-        if (
-          selected
-        ) {
-
-          ctx.shadowColor =
-            p.color;
-
-          ctx.shadowBlur =
-            18;
-        }
-
-
-        ctx.font =
-          (
-            selected
-              ? "900 24px "
-              : "700 20px "
-          ) +
-          "'Segoe UI Symbol', Arial, sans-serif";
-
-
-        ctx.textAlign =
-          "center";
-
-        ctx.textBaseline =
-          "middle";
-
-        ctx.fillStyle =
-          p.color;
-
-
-        ctx.fillText(
-          p.glyph,
+        this._drawPlanetIcon(
           x,
-          y
+          y,
+          selected ? 10 : 8,
+          p.name,
+          p.color,
+          selected
         );
-
-
-        ctx.restore();
 
 
         if (
