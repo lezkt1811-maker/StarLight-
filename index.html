@@ -749,12 +749,14 @@ function isDayBirth(time, latDeg, lonDeg){
     const A = window.Astronomy;
     const observer = new A.Observer(latDeg, lonDeg, 0);
     const equ = A.Equator("Sun", time, observer, true, true);
-    /* "airless" = no atmospheric refraction correction. Astrological sect should be
-       based on the Sun's true geometric altitude, not its apparent (refracted) altitude,
-       so the day/night line doesn't wobble with atmospheric conditions.
-       Threshold: altitude >= 0° is Day (Sun exactly on the horizon counts as Day).
-       This is an explicit convention choice, documented here so it stays consistent. */
-    const hor = A.Horizon(time, observer, equ.ra, equ.dec, "airless");
+    /* null = no atmospheric refraction correction (astronomy-engine only accepts
+       "normal", "jplhor", or a falsy value -- any other string throws). Astrological
+       sect should be based on the Sun's true geometric altitude, not its apparent
+       (refracted) altitude, so the day/night line doesn't wobble with atmospheric
+       conditions. Threshold: altitude >= 0° is Day (Sun exactly on the horizon
+       counts as Day). This is an explicit convention choice, documented here so it
+       stays consistent. */
+    const hor = A.Horizon(time, observer, equ.ra, equ.dec, null);
     return hor.altitude >= 0;
   }catch(err){
     console.error("Day/night calculation failed:", err);
