@@ -1336,29 +1336,49 @@
         }
 
 
-        /* CONSTELLATION NAME */
+        /* CONSTELLATION NAME
+         *
+         * Positioned at the zone's own ecliptic-longitude center
+         * (seg.lo + seg.span/2), NOT at the average position of the
+         * constellation's real stars. A constellation's real stars
+         * (Scorpius especially -- only ~6 degrees of it actually
+         * touches the ecliptic, the rest of the figure sits well off
+         * to the side) can sit far from the narrow ecliptic slice
+         * officially assigned to it, which previously dragged labels
+         * out of their proper Aries-to-Pisces sequence on screen.
+         */
+
+        const boxMidLon =
+          mod360(
+            seg.lo +
+            seg.span / 2
+          );
+
+        const labelX =
+          this._lonToX(
+            boxMidLon
+          );
 
         if (
-          visible.length
+          labelX >= -40 &&
+          labelX <= W + 40
         ) {
 
-          const avgX =
-            visible.reduce(
-              function(sum,p) {
-                return sum + p.x;
-              },
-              0
-            ) /
-            visible.length;
-
-          const avgY =
-            visible.reduce(
-              function(sum,p) {
-                return sum + p.y;
-              },
-              0
-            ) /
-            visible.length;
+          const labelY =
+            visible.length
+              ? Math.max(
+                  18,
+                  (
+                    visible.reduce(
+                      function(sum,p) {
+                        return sum + p.y;
+                      },
+                      0
+                    ) /
+                    visible.length
+                  ) - 9
+                )
+              : 24;
 
 
           ctx.shadowColor =
@@ -1381,11 +1401,8 @@
 
           ctx.fillText(
             seg.n,
-            avgX,
-            Math.max(
-              18,
-              avgY - 9
-            )
+            labelX,
+            labelY
           );
         }
 
