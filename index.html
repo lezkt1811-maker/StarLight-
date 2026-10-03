@@ -232,7 +232,7 @@
     </div>
     <div style="font-size:11px;color:rgba(224,236,255,0.85);text-align:center;margin-top:10px;">Tap a planet on your chart above to highlight it here &middot; drag to pan &middot; pinch or scroll to zoom</div>
     <div id="sc13EclInfo" style="margin-top:12px;min-height:50px;background:rgba(0,0,0,.35);border:1px dashed rgba(37,99,255,.25);border-radius:10px;padding:12px 14px;">
-      <div style="font-size:13px;color:rgba(224,236,255,0.85);">Generate your chart above, then tap any planet to sync it here.</div>
+      <div style="font-size:13px;color:rgba(224,236,255,0.85);">Showing the sky right now. Generate your chart above, then tap any planet to sync it to your birth data.</div>
     </div>
   </div>
 </div>
@@ -1454,6 +1454,11 @@ async function sc13OpenMiniReading(){
   document.addEventListener('DOMContentLoaded', function(){
     if(window.SC13Ecliptic && document.getElementById('sc13EclCanvas')){
       SC13Ecliptic.init({ canvas: 'sc13EclCanvas', infoPanel: 'sc13EclInfo' });
+      /* Show where the planets actually are right now, before anyone has generated
+         a chart -- ecliptic longitude only needs the current time, not a birth
+         location, so this is accurate regardless of where the visitor is. Generating
+         a chart later calls setBirthData() again and replaces this with birth data. */
+      try{ SC13Ecliptic.setBirthData(new Date()); }catch(e){ console.warn('Could not load current sky positions', e); }
     }
   });
   function sc13EclTogglePlay(){
