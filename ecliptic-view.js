@@ -1700,14 +1700,49 @@
           p.name;
 
 
+        const iconRadius =
+          selected ? 10 : 8;
+
         this._drawPlanetIcon(
           x,
           y,
-          selected ? 10 : 8,
+          iconRadius,
           p.name,
           p.color,
           selected
         );
+
+
+        /* Glyph label under every planet -- without this, an unselected
+           planet is just an unlabeled colored dot. */
+        ctx.save();
+
+        ctx.shadowColor =
+          "#000";
+
+        ctx.shadowBlur =
+          4;
+
+        ctx.font =
+          (selected ? "800 13px" : "700 11px") +
+          " Raleway, Arial, sans-serif";
+
+        ctx.textAlign =
+          "center";
+
+        ctx.textBaseline =
+          "top";
+
+        ctx.fillStyle =
+          "#ffffff";
+
+        ctx.fillText(
+          p.glyph || p.name,
+          x,
+          y + iconRadius + 3
+        );
+
+        ctx.restore();
 
 
         if (
