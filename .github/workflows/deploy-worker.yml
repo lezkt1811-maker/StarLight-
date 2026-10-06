@@ -13,10 +13,13 @@ name: Deploy fulfillment worker
 #   TWILIO_ACCOUNT_SID     - can be added later, once you set up Twilio for SMS alerts
 #   TWILIO_AUTH_TOKEN      - same
 #   TWILIO_FROM_NUMBER     - same
-# A run before those secrets exist will fail (a red X) — that's expected and
-# harmless; nothing gets deployed with missing credentials, and this run can
-# be re-triggered once they're added (Actions tab -> this workflow -> "Re-run
-# jobs", no new commit needed).
+# A secret with no value set in GitHub is skipped (not deployed as empty, and
+# not an error) -- whatever is already set on Cloudflare, including a value
+# fixed there by hand, is left alone. To actually push a new/changed value for
+# one of these, update it in GitHub Actions secrets, then re-run this workflow
+# (Actions tab -> this workflow -> "Re-run jobs", no new commit needed) --
+# editing it only in the Cloudflare dashboard works until the next deploy,
+# which would otherwise silently fall back to whatever (or nothing) GitHub has.
 
 on:
   push:
@@ -44,14 +47,37 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npx wrangler deploy
 
+      # Only pushes a secret here if GitHub actually has a non-empty value for it --
+      # otherwise this step would silently overwrite a value someone fixed directly
+      # in the Cloudflare dashboard (confirmed in production: a later deploy reverted
+      # a manually-corrected ANTHROPIC_API_KEY back to the stale GitHub-side value,
+      # because GitHub's copy was never updated to match). Skipping blind ones means
+      # GitHub and Cloudflare can only ever disagree by GitHub being behind, never by
+      # a deploy actively undoing a fix made on the Cloudflare side.
       - name: Set secrets on the deployed worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
         run: |
-          printf '%s' "${{ secrets.STRIPE_SECRET_KEY }}" | npx wrangler secret put STRIPE_SECRET_KEY
-          printf '%s' "${{ secrets.STRIPE_WEBHOOK_SECRET }}" | npx wrangler secret put STRIPE_WEBHOOK_SECRET
-          printf '%s' "${{ secrets.RESEND_API_KEY }}" | npx wrangler secret put RESEND_API_KEY
-          printf '%s' "${{ secrets.ANTHROPIC_API_KEY }}" | npx wrangler secret put ANTHROPIC_API_KEY
-          printf '%s' "${{ secrets.TWILIO_ACCOUNT_SID }}" | npx wrangler secret put TWILIO_ACCOUNT_SID
-          printf '%s' "${{ secrets.TWILIO_AUTH_TOKEN }}" | npx wrangler secret put TWILIO_AUTH_TOKEN
-          printf '%s' "${{ secrets.TWILIO_FROM_NUMBER }}" | npx wrangler secret put TWILIO_FROM_NUMBER
+          set_if_present() {
+            name="$1"
+            value="$2"
+            if [ -n "$value" ]; then
+              printf '%s' "$value" | npx wrangler secret put "$name"
+            else
+              echo "Skipping $name -- no value set in GitHub Actions secrets (leaving Cloudflare's current value untouched)"
+            fi
+          }
+          set_if_present STRIPE_SECRET_KEY "$STRIPE_SECRET_KEY"
+          set_if_present STRIPE_WEBHOOK_SECRET "$STRIPE_WEBHOOK_SECRET"
+          set_if_present RESEND_API_KEY "$RESEND_API_KEY"
+          set_if_present ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
+          set_if_present TWILIO_ACCOUNT_SID "$TWILIO_ACCOUNT_SID"
+          set_if_present TWILIO_AUTH_TOKEN "$TWILIO_AUTH_TOKEN"
+          set_if_present TWILIO_FROM_NUMBER "$TWILIO_FROM_NUMBER"
