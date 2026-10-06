@@ -1,10 +1,22 @@
 import { buildReadingPdf, buildMiniReadingPdf } from "./pdf.js";
 import { generateInterpretation, generateMiniInterpretation } from "./interpret.js";
-import { sendReadingEmail, notifyOwner } from "./email.js";
+import { sendReadingEmail, sendHoldingEmail, notifyOwner } from "./email.js";
+import { smsOwner } from "./sms.js";
 
 const VALID_SCHEMAS = ["starchart13-detailed-reading", "starchart13-mini-reading"];
 import { STATUS, createOrder, getOrder, getOrderIdBySession, setStatus } from "./orders.js";
 import { verifyStripeSignature } from "./verifyStripeSignature.js";
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/* Alerts the owner on every channel we have -- email (easy to miss) and a text
+   (the one actually meant to be seen). Both are best-effort; neither throws. */
+async function alertOwner(env, { orderRef, email, error }) {
+  await Promise.allSettled([
+    notifyOwner(env, { orderRef, email, error }),
+    smsOwner(env, `Lilith and Eve Astrology: order ${orderRef || "?"} needs manual fulfillment. ${error || ""}`),
+  ]);
+}
 
 function corsHeaders(env) {
   return {
@@ -117,14 +129,14 @@ async function fulfillOrder(env, session) {
 
   if (!orderId) {
     console.error("Checkout session had no client_reference_id", stripeSessionId);
-    await notifyOwner(env, { orderRef: stripeSessionId, email, error: "Checkout session had no client_reference_id — cannot locate chart data." });
+    await alertOwner(env, { orderRef: stripeSessionId, email, error: "Checkout session had no client_reference_id — cannot locate chart data." });
     return;
   }
 
   let order = await getOrder(env, orderId);
   if (!order) {
     console.error("No stored order found for orderId", orderId, stripeSessionId);
-    await notifyOwner(env, { orderRef: stripeSessionId, email, error: `No stored order found for order id ${orderId}.` });
+    await alertOwner(env, { orderRef: stripeSessionId, email, error: `No stored order found for order id ${orderId}.` });
     return;
   }
 
@@ -151,23 +163,42 @@ async function fulfillOrder(env, session) {
     order = await setStatus(env, order, STATUS.GENERATING, { attempts: order.attempts + 1 });
 
     let interpretation = null;
-    try {
-      interpretation = isMini
-        ? await generateMiniInterpretation(env, order.payload)
-        : await generateInterpretation(env, order.payload);
-    } catch (err) {
-      // The customer still gets a PDF (deterministic fallback text below), so this
-      // isn't a hard failure — but it means every AI-written section in their paid
-      // reading just got replaced with a placeholder sentence, and that must not
-      // happen silently. Tell the owner immediately, with the real error (usually
-      // an Anthropic auth/config/model problem), so they can catch it before a
-      // customer has to report it themselves.
-      console.error("AI interpretation failed, falling back to deterministic PDF text:", err.message);
-      await notifyOwner(env, {
+    let interpretationError = null;
+    // One retry covers a transient blip (rate limit, brief outage) now that the model
+    // id itself is correct; a persistent problem will still fail both attempts.
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        interpretation = isMini
+          ? await generateMiniInterpretation(env, order.payload)
+          : await generateInterpretation(env, order.payload);
+        interpretationError = null;
+        break;
+      } catch (err) {
+        interpretationError = err;
+        console.error(`AI interpretation attempt ${attempt} failed:`, err.message);
+        if (attempt < 2) await sleep(1500);
+      }
+    }
+
+    if (!interpretation) {
+      // Never ship a PDF full of placeholder text — hold the order instead. The customer
+      // gets a holding email saying their reading is being finished personally (not
+      // silence, not a broken PDF), and the owner gets alerted on every channel
+      // available so this gets caught and fixed instead of discovered by a customer.
+      console.error("AI interpretation failed twice — holding order instead of sending placeholder PDF:", interpretationError?.message);
+      await sendHoldingEmail(env, {
+        toEmail: email,
+        customerName: order.payload.customer?.name,
+        orderRef: stripeSessionId,
+        productName: order.payload.product?.name,
+      });
+      await alertOwner(env, {
         orderRef: stripeSessionId,
         email,
-        error: `AI interpretation failed — customer's PDF will use placeholder text instead of a written reading. Underlying error: ${err.message}`,
+        error: `AI interpretation failed twice — reading HELD, customer was sent a holding email instead of a PDF. Underlying error: ${interpretationError?.message}`,
       });
+      await setStatus(env, order, STATUS.FAILED, { lastError: `AI interpretation failed: ${interpretationError?.message}` });
+      return;
     }
 
     const pdfBytes = isMini
@@ -189,6 +220,6 @@ async function fulfillOrder(env, session) {
   } catch (err) {
     console.error("Order fulfillment failed", orderId, stripeSessionId, err.message);
     await setStatus(env, order, STATUS.FAILED, { lastError: err.message });
-    await notifyOwner(env, { orderRef: stripeSessionId, email, error: err.message });
+    await alertOwner(env, { orderRef: stripeSessionId, email, error: err.message });
   }
 }

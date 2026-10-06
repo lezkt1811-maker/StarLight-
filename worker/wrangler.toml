@@ -19,8 +19,15 @@ FROM_EMAIL = "Lilith and Eve Astrology <readings@starchart13.com>"
 CONTACT_EMAIL = "katythomas96@yahoo.com"
 CLAUDE_MODEL = "claude-sonnet-5-5"
 
+# Your own cell phone, in E.164 format (e.g. +18165551234) -- this is where the text
+# alert goes when an order needs manual attention. REPLACE this before it'll work.
+OWNER_PHONE = "REPLACE_WITH_YOUR_PHONE_NUMBER"
+
 # Secrets (never put these here — set with `wrangler secret put <NAME>`):
 #   STRIPE_SECRET_KEY       Stripe secret key (sk_live_... / sk_test_...)
 #   STRIPE_WEBHOOK_SECRET   Signing secret for the /webhook endpoint (whsec_...)
 #   RESEND_API_KEY          Resend API key (re_...)
 #   ANTHROPIC_API_KEY       Anthropic API key (sk-ant-...)
+#   TWILIO_ACCOUNT_SID      Twilio Account SID (console.twilio.com dashboard)
+#   TWILIO_AUTH_TOKEN       Twilio Auth Token (same dashboard)
+#   TWILIO_FROM_NUMBER      The Twilio phone number that sends the text, in E.164
