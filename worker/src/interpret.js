@@ -2,6 +2,17 @@ import { deriveChartFacts, describeOccupants } from "./facts.js";
 
 const TOOL_NAME = "write_reading_sections";
 
+/* A missing or whitespace-corrupted secret (a stray newline from copy/paste is a
+   common cause) makes fetch() throw a bare "Invalid header value" with no indication
+   of which header or why -- nearly impossible to diagnose from a KV-stored lastError
+   alone. Trim defends against the whitespace case automatically; the explicit check
+   turns the other case into a message that says exactly what's wrong. */
+function requireAnthropicKey(env) {
+  const key = (env.ANTHROPIC_API_KEY || "").trim();
+  if (!key) throw new Error("ANTHROPIC_API_KEY is not set (or is empty) on this worker — check the Cloudflare secret.");
+  return key;
+}
+
 /* Every section the AI is asked to write. "ophiuchusSection" is added to the
    schema dynamically (see below) — when the chart has no Ophiuchus placement
    we never ask the AI to write about it at all, and use a fixed, honest
@@ -62,7 +73,7 @@ export async function generateInterpretation(env, payload) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": env.ANTHROPIC_API_KEY,
+      "x-api-key": requireAnthropicKey(env),
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify(body),
@@ -224,7 +235,7 @@ export async function generateMiniInterpretation(env, payload) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": env.ANTHROPIC_API_KEY,
+      "x-api-key": requireAnthropicKey(env),
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify(body),
