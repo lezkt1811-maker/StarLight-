@@ -68,14 +68,21 @@ export async function generateInterpretation(env, payload) {
       {
         name: TOOL_NAME,
         description: "Submit the written sections of the personalized Lilith and Eve Astrology astrology reading.",
+        strict: true,
         input_schema: {
           type: "object",
           properties: Object.fromEntries(sectionFields.map((f) => [f, { type: "string" }])),
           required: sectionFields,
+          additionalProperties: false,
         },
       },
     ],
-    tool_choice: { type: "tool", name: TOOL_NAME },
+    // Claude Sonnet 5.5 (and other 5.x-generation models) reject forced tool_choice
+    // ("tool"/"any") outright with a 400 -- confirmed against Anthropic's own docs.
+    // "auto" + strict:true on the tool is the supported way to still guarantee
+    // schema-valid output; buildPrompt() explicitly tells the model to call the tool
+    // so "auto" doesn't just reply with plain text instead.
+    tool_choice: { type: "auto" },
   };
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -185,7 +192,7 @@ function buildPrompt(payload, facts, sectionFields) {
       "confident, experienced astrologer."
   );
   lines.push("");
-  lines.push(`Call the ${TOOL_NAME} tool with exactly these fields: ${sectionFields.join(", ")}.`);
+  lines.push(`Call the ${TOOL_NAME} tool now with exactly these fields: ${sectionFields.join(", ")}. Do not respond in plain text — submit your answer only as a call to this tool.`);
   lines.push("Field guide:");
   lines.push("- chartGlance: concise chart summary — Ascendant, Sun, Moon, and the most significant placements.");
   if (sectionFields.includes("ophiuchusSection")) {
@@ -230,14 +237,18 @@ export async function generateMiniInterpretation(env, payload) {
       {
         name: MINI_TOOL_NAME,
         description: "Submit the written sections of the personalized Lilith & Eve Placement Reading.",
+        strict: true,
         input_schema: {
           type: "object",
           properties: Object.fromEntries(MINI_SECTION_FIELDS.map((f) => [f, { type: "string" }])),
           required: MINI_SECTION_FIELDS,
+          additionalProperties: false,
         },
       },
     ],
-    tool_choice: { type: "tool", name: MINI_TOOL_NAME },
+    // See the matching comment in generateInterpretation() -- forced tool_choice is
+    // rejected on this model generation; "auto" + strict:true is the supported fix.
+    tool_choice: { type: "auto" },
   };
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -303,7 +314,7 @@ function buildMiniPrompt(payload, facts) {
       "astrologer."
   );
   lines.push("");
-  lines.push(`Call the ${MINI_TOOL_NAME} tool with exactly these fields: ${MINI_SECTION_FIELDS.join(", ")}.`);
+  lines.push(`Call the ${MINI_TOOL_NAME} tool now with exactly these fields: ${MINI_SECTION_FIELDS.join(", ")}. Do not respond in plain text — submit your answer only as a call to this tool.`);
   lines.push("Field guide:");
   lines.push("- lilithSection: 2-3 sentences on this person's Black Moon Lilith placement (sign, house) and what it means for autonomy, instinct, and what they refuse to suppress.");
   lines.push("- eveSection: 2-3 sentences on this person's Eve placement (sign, house) and what it means for embodiment, closeness, and intimacy.");
