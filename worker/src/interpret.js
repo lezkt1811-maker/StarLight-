@@ -2,14 +2,23 @@ import { deriveChartFacts, describeOccupants } from "./facts.js";
 
 const TOOL_NAME = "write_reading_sections";
 
-/* A missing or whitespace-corrupted secret (a stray newline from copy/paste is a
-   common cause) makes fetch() throw a bare "Invalid header value" with no indication
-   of which header or why -- nearly impossible to diagnose from a KV-stored lastError
-   alone. Trim defends against the whitespace case automatically; the explicit check
-   turns the other case into a message that says exactly what's wrong. */
+/* A missing or corrupted secret makes fetch() throw a bare "Invalid header value"
+   with no indication of which header or why -- nearly impossible to diagnose from a
+   KV-stored lastError alone, and a plain .trim() only catches corruption at the
+   edges of the string, not a stray character/line-break baked into the middle of it
+   (confirmed in production: trim() alone did not fix a real failing key). A real
+   Anthropic key is only letters, digits, hyphens and underscores, so strip anything
+   else from anywhere in the string rather than trying to guess where it is. */
 function requireAnthropicKey(env) {
-  const key = (env.ANTHROPIC_API_KEY || "").trim();
-  if (!key) throw new Error("ANTHROPIC_API_KEY is not set (or is empty) on this worker — check the Cloudflare secret.");
+  const raw = env.ANTHROPIC_API_KEY || "";
+  const key = raw.replace(/[^A-Za-z0-9_-]/g, "");
+  if (!key) throw new Error("ANTHROPIC_API_KEY is not set (or is empty after removing invalid characters) on this worker — check the Cloudflare secret.");
+  if (key.length !== raw.trim().length) {
+    console.error(
+      `ANTHROPIC_API_KEY contained ${raw.length - key.length} invalid character(s) that were stripped out -- ` +
+        `the stored secret is corrupted (not just edge whitespace) and should be re-copied from the Anthropic Console.`
+    );
+  }
   return key;
 }
 
