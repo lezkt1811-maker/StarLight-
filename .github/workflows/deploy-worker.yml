@@ -10,6 +10,9 @@ name: Deploy fulfillment worker
 #   STRIPE_WEBHOOK_SECRET  - can be added later, once the webhook exists
 #   RESEND_API_KEY
 #   ANTHROPIC_API_KEY
+#   TWILIO_ACCOUNT_SID     - can be added later, once you set up Twilio for SMS alerts
+#   TWILIO_AUTH_TOKEN      - same
+#   TWILIO_FROM_NUMBER     - same
 # A run before those secrets exist will fail (a red X) — that's expected and
 # harmless; nothing gets deployed with missing credentials, and this run can
 # be re-triggered once they're added (Actions tab -> this workflow -> "Re-run
@@ -49,3 +52,6 @@ jobs:
           printf '%s' "${{ secrets.STRIPE_WEBHOOK_SECRET }}" | npx wrangler secret put STRIPE_WEBHOOK_SECRET
           printf '%s' "${{ secrets.RESEND_API_KEY }}" | npx wrangler secret put RESEND_API_KEY
           printf '%s' "${{ secrets.ANTHROPIC_API_KEY }}" | npx wrangler secret put ANTHROPIC_API_KEY
+          printf '%s' "${{ secrets.TWILIO_ACCOUNT_SID }}" | npx wrangler secret put TWILIO_ACCOUNT_SID
+          printf '%s' "${{ secrets.TWILIO_AUTH_TOKEN }}" | npx wrangler secret put TWILIO_AUTH_TOKEN
+          printf '%s' "${{ secrets.TWILIO_FROM_NUMBER }}" | npx wrangler secret put TWILIO_FROM_NUMBER
