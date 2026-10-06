@@ -29,7 +29,7 @@ const BASE_SECTION_FIELDS = [
    explicitly not to invent placements beyond them. Throws on any failure —
    the caller (index.js) falls back to deterministic, data-only text. */
 export async function generateInterpretation(env, payload) {
-  const model = env.CLAUDE_MODEL || "claude-sonnet-5";
+  const model = env.CLAUDE_MODEL || "claude-sonnet-5-5";
   const facts = deriveChartFacts(payload);
   const sectionFields = facts.hasOphiuchus
     ? [...BASE_SECTION_FIELDS.slice(0, 1), "ophiuchusSection", ...BASE_SECTION_FIELDS.slice(1)]
@@ -194,7 +194,7 @@ const MINI_SECTION_FIELDS = ["lilithSection", "eveSection", "axisSynthesis"];
    prompt since this product covers only Black Moon Lilith, Eve, and the axis
    between them (never the full 13-sign chart the $25 reading promises). */
 export async function generateMiniInterpretation(env, payload) {
-  const model = env.CLAUDE_MODEL || "claude-sonnet-5";
+  const model = env.CLAUDE_MODEL || "claude-sonnet-5-5";
   const facts = deriveChartFacts(payload);
 
   const body = {
