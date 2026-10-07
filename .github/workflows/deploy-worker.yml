@@ -13,6 +13,7 @@ name: Deploy fulfillment worker
 #   TWILIO_ACCOUNT_SID     - can be added later, once you set up Twilio for SMS alerts
 #   TWILIO_AUTH_TOKEN      - same
 #   TWILIO_FROM_NUMBER     - same
+#   ADMIN_TOKEN            - any long random string; protects POST /admin/resend
 # A secret with no value set in GitHub is skipped (not deployed as empty, and
 # not an error) -- whatever is already set on Cloudflare, including a value
 # fixed there by hand, is left alone. To actually push a new/changed value for
@@ -64,6 +65,7 @@ jobs:
           TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
           set_if_present() {
             name="$1"
@@ -81,3 +83,4 @@ jobs:
           set_if_present TWILIO_ACCOUNT_SID "$TWILIO_ACCOUNT_SID"
           set_if_present TWILIO_AUTH_TOKEN "$TWILIO_AUTH_TOKEN"
           set_if_present TWILIO_FROM_NUMBER "$TWILIO_FROM_NUMBER"
+          set_if_present ADMIN_TOKEN "$ADMIN_TOKEN"
