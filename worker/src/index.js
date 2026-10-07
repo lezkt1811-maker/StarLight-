@@ -60,8 +60,8 @@ export default {
       return handleStatus(url, env);
     }
 
-    if (url.pathname === "/admin/resend" && request.method === "POST") {
-      return handleAdminResend(request, env);
+    if (url.pathname === "/admin/resend" && (request.method === "POST" || request.method === "GET")) {
+      return handleAdminResend(request, url, env);
     }
 
     return new Response("Not found", { status: 404 });
@@ -124,21 +124,29 @@ async function handleStatus(url, env) {
    on orders that were fulfilled with placeholder AI text before that bug was fixed.
    Requires a timing-safe-compared bearer token (env.ADMIN_TOKEN) since it can force
    reprocessing of any order by id, and refuses anything not already in a terminal
-   state so it can never interrupt an order mid-flight. */
-async function handleAdminResend(request, env) {
+   state so it can never interrupt an order mid-flight. GET (with ?orderId=&token=) is
+   accepted alongside POST so this can be triggered by tapping a link, not just curl. */
+async function handleAdminResend(request, url, env) {
   const headers = { "Content-Type": "application/json" };
-  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+
+  let orderId, token;
+  if (request.method === "GET") {
+    orderId = url.searchParams.get("orderId");
+    token = url.searchParams.get("token") || "";
+  } else {
+    token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+    let body;
+    try {
+      body = await request.json();
+    } catch (e) {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers });
+    }
+    orderId = body?.orderId;
+  }
+
   if (!env.ADMIN_TOKEN || !timingSafeEqual(token, env.ADMIN_TOKEN)) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers });
   }
-
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
-    return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers });
-  }
-  const orderId = body?.orderId;
   if (!orderId) {
     return new Response(JSON.stringify({ error: "orderId is required" }), { status: 400, headers });
   }
