@@ -22,6 +22,26 @@ function requireAnthropicKey(env) {
   return key;
 }
 
+/* A real order sat stuck in "generating" for 18+ minutes with no error recorded --
+   the fetch() to Anthropic had no timeout, so a hung or silent-forever response left
+   the order with no success, no failure, no alert, nothing. AbortController guarantees
+   this call eventually rejects (which the retry loop and hold-on-failure logic already
+   know how to handle) instead of just never resolving. */
+async function fetchWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error(`Anthropic API call timed out after ${timeoutMs}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /* Every section the AI is asked to write. "ophiuchusSection" is added to the
    schema dynamically (see below) — when the chart has no Ophiuchus placement
    we never ask the AI to write about it at all, and use a fixed, honest
@@ -85,15 +105,19 @@ export async function generateInterpretation(env, payload) {
     tool_choice: { type: "auto" },
   };
 
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": requireAnthropicKey(env),
-      "anthropic-version": "2023-06-01",
+  const resp = await fetchWithTimeout(
+    "https://api.anthropic.com/v1/messages",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": requireAnthropicKey(env),
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify(body),
     },
-    body: JSON.stringify(body),
-  });
+    55000
+  );
 
   if (!resp.ok) {
     const text = await resp.text();
@@ -251,15 +275,19 @@ export async function generateMiniInterpretation(env, payload) {
     tool_choice: { type: "auto" },
   };
 
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": requireAnthropicKey(env),
-      "anthropic-version": "2023-06-01",
+  const resp = await fetchWithTimeout(
+    "https://api.anthropic.com/v1/messages",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": requireAnthropicKey(env),
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify(body),
     },
-    body: JSON.stringify(body),
-  });
+    55000
+  );
 
   if (!resp.ok) {
     const text = await resp.text();
