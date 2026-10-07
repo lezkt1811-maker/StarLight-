@@ -215,6 +215,57 @@
 
 <div id="outAsp" style="display:none;margin-top:14px;background:rgba(0,0,0,.5);border:1px solid rgba(155,77,255,.3);border-radius:12px;padding:14px 16px;color:#e0f0ff;"></div></div>
 
+<div class="sc13-section" id="fullChart" style="margin:20px auto 4px;">
+  <span class="sc13-eyebrow">Celestial Chart Resurrection &middot; by Lilith and Eve Astrology</span>
+  <h2 class="sc13-section-title" style="margin-bottom:6px;">FULL 13-SIGN ASTROLOGY READING</h2>
+  <p class="sc13-section-copy">All 13 signs, all 13 houses, Ophiuchus, the Lilith&ndash;Eve axis, and every theme from your free chart &mdash; written into one complete reading.</p>
+</div>
+
+<div id="sc13ReadingProduct" style="display:none;text-align:center;margin:14px auto 20px;max-width:480px;padding:0 14px;">
+  <div style="border:1px solid rgba(176,38,255,.6);border-radius:20px;padding:24px 22px 20px;background:linear-gradient(160deg,rgba(58,16,84,.55),rgba(7,11,20,.95));box-shadow:0 0 19px rgba(176,38,255,0.9),0 0 14px rgba(34,211,238,0.9),0 16px 44px rgba(0,0,0,.6);">
+    <div style="font-family:Raleway,sans-serif;font-weight:800;font-size:11px;color:#22D3EE;letter-spacing:.16em;text-transform:uppercase;margin-bottom:8px;">Full 13-Sign Astrology Reading</div>
+    <div style="font-family:Raleway,sans-serif;font-weight:900;font-size:16px;color:#D8E3FF;letter-spacing:.02em;margin-bottom:16px;">Go deeper than the wheel.</div>
+
+    <ul style="text-align:left;list-style:none;padding:0;margin:0 0 16px;font-family:Trebuchet MS,sans-serif;font-size:12.5px;line-height:1.9;color:rgba(230,225,255,.85);">
+      <li>✦ All 13 signs</li>
+      <li>✦ All 13 houses</li>
+      <li>✦ Major aspects</li>
+      <li>✦ Ophiuchus interpretation</li>
+      <li>✦ 13th-house interpretation</li>
+      <li>✦ Lilith–Eve axis</li>
+      <li>✦ Love and relationship themes</li>
+      <li>✦ Purpose and life direction</li>
+      <li>✦ Tropical vs True-Sky differences</li>
+      <li>✦ Full chart synthesis</li>
+      <li>✦ Delivered as a PDF, emailed to you automatically</li>
+    </ul>
+
+    <div style="font-family:Cinzel,serif;font-weight:900;font-size:38px;color:#22D3EE;text-shadow:0 0 13px rgba(34,211,238,0.9);margin:6px 0 14px;">$25</div>
+    <button type="button" id="sc13PrepareBtn" onclick="sc13PrepareDetailedReading()" style="width:100%;padding:15px 14px;border-radius:12px;border:1px solid rgba(176,38,255,.85);background:linear-gradient(90deg,#B026FF,#FF2ED1);color:#fff;font-family:Raleway,sans-serif;font-weight:900;font-size:14px;letter-spacing:.05em;cursor:pointer;box-shadow:0 0 13px rgba(255,46,209,0.9);">
+      GET MY $25 PDF READING
+    </button>
+    <div id="sc13ReadingProductMsg" style="font-family:Raleway,sans-serif;font-size:10px;line-height:1.45;color:rgba(224,236,255,0.85);margin-top:10px;">
+      Generate your free chart first. Payment is connected after the report data is prepared.
+    </div>
+  </div>
+</div>
+
+<div id="sc13MiniReading" style="display:none;text-align:center;margin:26px auto 14px;max-width:400px;padding:0 14px;">
+  <div style="font-family:Raleway,sans-serif;font-weight:800;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:rgba(224,236,255,.6);margin-bottom:8px;">Want the shorter version?</div>
+  <div style="border:1px solid rgba(255,46,209,.3);border-radius:14px;padding:16px 16px;background:rgba(255,46,209,.04);">
+    <div style="font-family:Raleway,sans-serif;font-weight:900;font-size:17px;letter-spacing:.02em;color:#EAF1FF;margin-bottom:10px;">Lilith &amp; Eve Placement Reading &mdash; $7</div>
+    <ul style="text-align:left;list-style:none;padding:0;margin:0 auto 12px;max-width:260px;font-family:Trebuchet MS,sans-serif;font-size:12.5px;line-height:1.7;color:rgba(224,236,255,.85);">
+      <li>✦ Black Moon Lilith placement</li>
+      <li>✦ Eve placement</li>
+      <li>✦ What your Lilith&ndash;Eve axis means</li>
+      <li>✦ Short personalized interpretation</li>
+    </ul>
+    <div style="font-family:Raleway,sans-serif;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:rgba(224,236,255,.5);margin-bottom:12px;">Delivered automatically by email</div>
+    <button type="button" id="sc13MiniReadingBtn" onclick="sc13OpenMiniReading()" style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,46,209,.5);background:transparent;color:#FF9FE0;font-family:Raleway,sans-serif;font-weight:800;font-size:13px;letter-spacing:.03em;cursor:pointer;">GET MY $7 READING</button>
+    <div id="sc13MiniReadingMsg" style="font-family:Raleway,sans-serif;font-size:10px;line-height:1.45;color:rgba(224,236,255,0.75);margin-top:10px;">Generate your free chart first. Payment is connected after the report data is prepared.</div>
+  </div>
+</div>
+
 <div class="wrap" id="eclipticCard" style="max-width:100%;padding:0;">
   <div class="card" style="width:100vw;max-width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);border-radius:0;">
     <div class="card-title" style="padding-left:16px;padding-right:16px;">Ecliptic Sky View</div>
@@ -276,57 +327,6 @@
       <button class="pbtn" onclick="sc13CompareExportImage()">🖼️ Export Image</button>
       <button class="pbtn" onclick="sc13CompareBackToSingle()">✕ Close Comparison</button>
     </div>
-  </div>
-</div>
-
-<div class="sc13-section" id="fullChart" style="margin:26px auto 4px;">
-  <span class="sc13-eyebrow">Celestial Chart Resurrection &middot; by Lilith and Eve Astrology</span>
-  <h2 class="sc13-section-title" style="margin-bottom:6px;">FULL 13-SIGN ASTROLOGY READING</h2>
-  <p class="sc13-section-copy">All 13 signs, all 13 houses, Ophiuchus, the Lilith&ndash;Eve axis, and every theme from your free chart &mdash; written into one complete reading.</p>
-</div>
-
-<div id="sc13ReadingProduct" style="display:none;text-align:center;margin:14px auto 20px;max-width:480px;padding:0 14px;">
-  <div style="border:1px solid rgba(176,38,255,.6);border-radius:20px;padding:24px 22px 20px;background:linear-gradient(160deg,rgba(58,16,84,.55),rgba(7,11,20,.95));box-shadow:0 0 19px rgba(176,38,255,0.9),0 0 14px rgba(34,211,238,0.9),0 16px 44px rgba(0,0,0,.6);">
-    <div style="font-family:Raleway,sans-serif;font-weight:800;font-size:11px;color:#22D3EE;letter-spacing:.16em;text-transform:uppercase;margin-bottom:8px;">Full 13-Sign Astrology Reading</div>
-    <div style="font-family:Raleway,sans-serif;font-weight:900;font-size:16px;color:#D8E3FF;letter-spacing:.02em;margin-bottom:16px;">Go deeper than the wheel.</div>
-
-    <ul style="text-align:left;list-style:none;padding:0;margin:0 0 16px;font-family:Trebuchet MS,sans-serif;font-size:12.5px;line-height:1.9;color:rgba(230,225,255,.85);">
-      <li>✦ All 13 signs</li>
-      <li>✦ All 13 houses</li>
-      <li>✦ Major aspects</li>
-      <li>✦ Ophiuchus interpretation</li>
-      <li>✦ 13th-house interpretation</li>
-      <li>✦ Lilith–Eve axis</li>
-      <li>✦ Love and relationship themes</li>
-      <li>✦ Purpose and life direction</li>
-      <li>✦ Tropical vs True-Sky differences</li>
-      <li>✦ Full chart synthesis</li>
-      <li>✦ Delivered as a PDF, emailed to you automatically</li>
-    </ul>
-
-    <div style="font-family:Cinzel,serif;font-weight:900;font-size:38px;color:#22D3EE;text-shadow:0 0 13px rgba(34,211,238,0.9);margin:6px 0 14px;">$25</div>
-    <button type="button" id="sc13PrepareBtn" onclick="sc13PrepareDetailedReading()" style="width:100%;padding:15px 14px;border-radius:12px;border:1px solid rgba(176,38,255,.85);background:linear-gradient(90deg,#B026FF,#FF2ED1);color:#fff;font-family:Raleway,sans-serif;font-weight:900;font-size:14px;letter-spacing:.05em;cursor:pointer;box-shadow:0 0 13px rgba(255,46,209,0.9);">
-      GET MY $25 PDF READING
-    </button>
-    <div id="sc13ReadingProductMsg" style="font-family:Raleway,sans-serif;font-size:10px;line-height:1.45;color:rgba(224,236,255,0.85);margin-top:10px;">
-      Generate your free chart first. Payment is connected after the report data is prepared.
-    </div>
-  </div>
-</div>
-
-<div id="sc13MiniReading" style="display:none;text-align:center;margin:26px auto 14px;max-width:400px;padding:0 14px;">
-  <div style="font-family:Raleway,sans-serif;font-weight:800;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:rgba(224,236,255,.6);margin-bottom:8px;">Want the shorter version?</div>
-  <div style="border:1px solid rgba(255,46,209,.3);border-radius:14px;padding:16px 16px;background:rgba(255,46,209,.04);">
-    <div style="font-family:Raleway,sans-serif;font-weight:900;font-size:17px;letter-spacing:.02em;color:#EAF1FF;margin-bottom:10px;">Lilith &amp; Eve Placement Reading &mdash; $7</div>
-    <ul style="text-align:left;list-style:none;padding:0;margin:0 auto 12px;max-width:260px;font-family:Trebuchet MS,sans-serif;font-size:12.5px;line-height:1.7;color:rgba(224,236,255,.85);">
-      <li>✦ Black Moon Lilith placement</li>
-      <li>✦ Eve placement</li>
-      <li>✦ What your Lilith&ndash;Eve axis means</li>
-      <li>✦ Short personalized interpretation</li>
-    </ul>
-    <div style="font-family:Raleway,sans-serif;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:rgba(224,236,255,.5);margin-bottom:12px;">Delivered automatically by email</div>
-    <button type="button" id="sc13MiniReadingBtn" onclick="sc13OpenMiniReading()" style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,46,209,.5);background:transparent;color:#FF9FE0;font-family:Raleway,sans-serif;font-weight:800;font-size:13px;letter-spacing:.03em;cursor:pointer;">GET MY $7 READING</button>
-    <div id="sc13MiniReadingMsg" style="font-family:Raleway,sans-serif;font-size:10px;line-height:1.45;color:rgba(224,236,255,0.75);margin-top:10px;">Generate your free chart first. Payment is connected after the report data is prepared.</div>
   </div>
 </div>
 
