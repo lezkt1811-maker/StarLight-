@@ -203,7 +203,9 @@ function buildPrompt(payload, facts, sectionFields) {
       "Lilith and Eve Astrology's interpretive framework from established astronomical fact where relevant (e.g. Ophiuchus's " +
       "existence as a constellation the ecliptic passes through is astronomy; what it means for someone is " +
       "interpretation). Avoid disclaimers, hedging, or repeating the same paragraph across sections. Write as a " +
-      "confident, experienced astrologer."
+      "confident, experienced astrologer. Within each section, write 2-4 shorter paragraphs instead of one long " +
+      "block — separate them with a blank line (two newlines). This is a formatting instruction only; it doesn't " +
+      "change what you say, just how it's broken up for readability."
   );
   lines.push("");
   lines.push(`Call the ${TOOL_NAME} tool now with exactly these fields: ${sectionFields.join(", ")}. Do not respond in plain text — submit your answer only as a call to this tool.`);
