@@ -9,6 +9,16 @@ import { verifyStripeSignature } from "./verifyStripeSignature.js";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// An order stuck in "generating" with no error, forever, turned out to be Cloudflare
+// itself: a Worker's ctx.waitUntil() only gets ~30 seconds of extra runtime after its
+// HTTP response has already been sent, and gets silently cancelled past that -- before
+// our own retry/timeout/error-handling code ever gets a chance to run. The AI writing +
+// PDF + email chain routinely needs longer than that. So the webhook no longer does any
+// of that slow work itself: it just marks the order PAID and returns. A Cron Trigger
+// (below) picks up PAID orders on its own schedule, where there's no prior response to
+// extend past, so the full chain gets to run to completion.
+const STALE_GENERATING_MS = 3 * 60 * 1000;
+
 /* Alerts the owner on every channel we have -- email (easy to miss) and a text
    (the one actually meant to be seen). Both are best-effort; neither throws. */
 async function alertOwner(env, { orderRef, email, error }) {
@@ -47,6 +57,14 @@ export default {
     }
 
     return new Response("Not found", { status: 404 });
+  },
+
+  // Runs on its own schedule (see wrangler.toml's [triggers]), independent of any HTTP
+  // request/response -- so it isn't subject to the waitUntil 30-second-after-response
+  // cutoff that was silently killing orders. This is where the actual AI writing, PDF
+  // rendering and emailing happens.
+  async scheduled(event, env, ctx) {
+    await sweepOrders(env);
   },
 };
 
@@ -111,9 +129,10 @@ async function handleWebhook(request, env, ctx) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
     if (session.payment_status === "paid") {
-      // Acknowledge the webhook immediately (Stripe retries on timeout/non-2xx) and do the
-      // slow work — AI writing, PDF rendering, email — in the background via waitUntil.
-      ctx.waitUntil(fulfillOrder(env, session));
+      // Just mark the order PAID (a couple of fast KV writes) and acknowledge the webhook.
+      // The slow work (AI writing, PDF, email) happens on the next scheduled() sweep, not
+      // here -- see the comment on STALE_GENERATING_MS above for why.
+      ctx.waitUntil(markPaid(env, session));
     } else {
       console.log("checkout.session.completed received but not yet paid", session.id, session.payment_status);
     }
@@ -122,7 +141,7 @@ async function handleWebhook(request, env, ctx) {
   return new Response("ok", { status: 200 });
 }
 
-async function fulfillOrder(env, session) {
+async function markPaid(env, session) {
   const orderId = session.client_reference_id;
   const email = session.customer_details?.email || session.customer_email;
   const stripeSessionId = session.id;
@@ -133,39 +152,68 @@ async function fulfillOrder(env, session) {
     return;
   }
 
-  let order = await getOrder(env, orderId);
+  const order = await getOrder(env, orderId);
   if (!order) {
     console.error("No stored order found for orderId", orderId, stripeSessionId);
     await alertOwner(env, { orderRef: stripeSessionId, email, error: `No stored order found for order id ${orderId}.` });
     return;
   }
 
-  // Idempotency: Stripe retries webhooks it didn't get a fast 2xx for, and can also send the
-  // same logical event more than once. If this order already reached a terminal fulfilled
-  // state for this exact Stripe session, treat this as a duplicate delivery and do nothing —
-  // no second email, no false "fulfillment failed" alert to the owner.
-  if (order.status === STATUS.FULFILLED && order.stripeSessionId === stripeSessionId) {
-    console.log("Duplicate webhook for already-fulfilled order — skipping", orderId, stripeSessionId);
-    return;
-  }
-  // Also guard against two near-simultaneous deliveries both starting fulfillment at once.
-  if (order.status === STATUS.GENERATING || order.status === STATUS.EMAILING) {
-    console.log("Order already being fulfilled — skipping concurrent duplicate webhook", orderId, stripeSessionId);
+  // Idempotency: Stripe retries webhooks it didn't get a fast 2xx for, and can also send
+  // the same logical event more than once. Only a PREPARED or already-PAID order (e.g. a
+  // retried delivery of the same event) should be (re)marked here -- anything further
+  // along is already being swept or finished.
+  if (order.status !== STATUS.PREPARED && order.status !== STATUS.PAID) {
+    console.log("Order already past PAID — skipping duplicate webhook", orderId, stripeSessionId);
     return;
   }
 
+  if (!email) {
+    console.error("Checkout session had no customer email", orderId, stripeSessionId);
+    await setStatus(env, order, STATUS.FAILED, { lastError: "Checkout session had no customer email", stripeSessionId });
+    await alertOwner(env, { orderRef: stripeSessionId, email, error: "Checkout session had no customer email" });
+    return;
+  }
+
+  await setStatus(env, order, STATUS.PAID, { stripeSessionId, customerEmail: email });
+}
+
+/* Scans every stored order for ones ready to process: newly PAID orders, plus any order
+   abandoned mid-"generating" (a crashed or evicted previous sweep) once it's been stuck
+   long enough that it's clearly not still in flight. Runs every minute (wrangler.toml). */
+async function sweepOrders(env) {
+  const dueOrders = [];
+  let cursor;
+  while (true) {
+    const page = await env.ORDERS.list({ prefix: "order:", cursor });
+    for (const key of page.keys) {
+      const raw = await env.ORDERS.get(key.name);
+      if (!raw) continue;
+      const order = JSON.parse(raw);
+      const stale = order.status === STATUS.GENERATING && Date.now() - new Date(order.updatedAt).getTime() > STALE_GENERATING_MS;
+      if (order.status === STATUS.PAID || stale) dueOrders.push(order);
+    }
+    if (page.list_complete) break;
+    cursor = page.cursor;
+  }
+
+  for (const order of dueOrders) {
+    await processOrder(env, order);
+  }
+}
+
+async function processOrder(env, order) {
+  const stripeSessionId = order.stripeSessionId;
+  const email = order.customerEmail;
   const isMini = order.payload.schema === "starchart13-mini-reading";
 
   try {
-    if (!email) throw new Error("Checkout session had no customer email");
-
-    order = await setStatus(env, order, STATUS.PAID, { stripeSessionId, customerEmail: email });
     order = await setStatus(env, order, STATUS.GENERATING, { attempts: order.attempts + 1 });
 
     let interpretation = null;
     let interpretationError = null;
-    // One retry covers a transient blip (rate limit, brief outage) now that the model
-    // id itself is correct; a persistent problem will still fail both attempts.
+    // One retry covers a transient blip (rate limit, brief outage); a persistent
+    // problem will still fail both attempts.
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         interpretation = isMini
@@ -218,7 +266,7 @@ async function fulfillOrder(env, session) {
 
     await setStatus(env, order, STATUS.FULFILLED, { lastError: null });
   } catch (err) {
-    console.error("Order fulfillment failed", orderId, stripeSessionId, err.message);
+    console.error("Order fulfillment failed", order.orderId, stripeSessionId, err.message);
     await setStatus(env, order, STATUS.FAILED, { lastError: err.message });
     await alertOwner(env, { orderRef: stripeSessionId, email, error: err.message });
   }

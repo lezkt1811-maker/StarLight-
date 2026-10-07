@@ -39,3 +39,12 @@ OWNER_PHONE = "REPLACE_WITH_YOUR_PHONE_NUMBER"
 # manually-fixed secret.
 [observability.logs]
 enabled = true
+
+# Runs scheduled() every minute to pick up PAID orders and actually process them (AI
+# writing, PDF, email). The webhook itself only marks an order PAID and returns -- a
+# Worker's background (waitUntil) time after an HTTP response is capped at ~30 seconds
+# by Cloudflare, which isn't enough for the full chain, and orders were silently
+# freezing mid-"generating" because of exactly that cutoff. A scheduled invocation has
+# no such borrowed-time limit, so the slow work belongs here instead.
+[triggers]
+crons = ["* * * * *"]
