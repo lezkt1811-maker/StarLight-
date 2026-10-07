@@ -49,6 +49,21 @@ class Cursor {
     if (line) this.drawLine(line, size, lineHeight);
     this.y -= 8;
   }
+  /* AI-written sections come back as one string with blank lines between paragraphs
+     (the prompt asks for that). paragraph() alone would collapse those -- it only
+     wraps on word boundaries -- so this splits on blank lines first and renders each
+     paragraph separately, with its own trailing gap, instead of one dense block. */
+  sectionText(text, size = 10.5, lineHeight = 15) {
+    const paragraphs = String(text || "")
+      .split(/\n\s*\n/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (!paragraphs.length) {
+      this.paragraph(text, size, lineHeight);
+      return;
+    }
+    paragraphs.forEach((p) => this.paragraph(p, size, lineHeight));
+  }
   drawLine(line, size, lineHeight) {
     this.ensureSpace(lineHeight);
     this.page.drawText(line, { x: MARGIN, y: this.y, size, font: this.font, color: INK });
@@ -95,56 +110,56 @@ export async function buildReadingPdf(payload, interpretation) {
 
   cursor.newPage();
   cursor.heading("Your True-Sky Chart at a Glance", 15, { kicker: "SECTION 1" });
-  cursor.paragraph(sections.chartGlance);
+  cursor.sectionText(sections.chartGlance);
 
   cursor.newPage();
   cursor.heading("Ophiuchus: The Hidden Thirteenth Sign", 15, { kicker: "SECTION 2" });
-  cursor.paragraph(sections.ophiuchusSection);
+  cursor.sectionText(sections.ophiuchusSection);
 
   cursor.heading("The 13th House", 15, { kicker: "SECTION 3" });
   cursor.paragraph(`Occupants: ${describeOccupants(facts.house13Occupants)}`, 9.5, 13);
   cursor.spacer(4);
-  cursor.paragraph(sections.house13Section);
+  cursor.sectionText(sections.house13Section);
 
   cursor.newPage();
   cursor.heading("Core Self", 14, { kicker: "SECTION 4" });
-  cursor.paragraph(sections.coreSelf);
+  cursor.sectionText(sections.coreSelf);
   cursor.heading("Emotional Nature", 14, { kicker: "SECTION 5" });
-  cursor.paragraph(sections.emotionalNature);
+  cursor.sectionText(sections.emotionalNature);
   cursor.heading("Mind & Communication", 14, { kicker: "SECTION 6" });
-  cursor.paragraph(sections.mindCommunication);
+  cursor.sectionText(sections.mindCommunication);
 
   drawPlacementsTable(cursor, payload);
 
   cursor.newPage();
   cursor.heading("Love, Desire & Relationships", 14, { kicker: "SECTION 7" });
-  cursor.paragraph(sections.loveRelationships);
+  cursor.sectionText(sections.loveRelationships);
   cursor.heading("Purpose, Growth & Direction", 14, { kicker: "SECTION 8" });
-  cursor.paragraph(sections.purposeGrowth);
+  cursor.sectionText(sections.purposeGrowth);
   cursor.heading("Outer Planets", 14, { kicker: "SECTION 9" });
-  cursor.paragraph(sections.outerPlanets);
+  cursor.sectionText(sections.outerPlanets);
 
   cursor.newPage();
   cursor.heading("Lilith and Eve Axis", 14, { kicker: "SECTION 10" });
-  cursor.paragraph(sections.lilithEveAxis);
+  cursor.sectionText(sections.lilithEveAxis);
 
   cursor.heading("All 13 Houses", 14, { kicker: "SECTION 11" });
-  cursor.paragraph(sections.allHousesNarrative);
+  cursor.sectionText(sections.allHousesNarrative);
   drawAllHousesTable(cursor, facts);
 
   cursor.newPage();
   cursor.heading("Major Aspect Patterns", 14, { kicker: "SECTION 12" });
-  cursor.paragraph(sections.aspectPatterns);
+  cursor.sectionText(sections.aspectPatterns);
   drawAspectsTable(cursor, payload);
 
   cursor.newPage();
   cursor.heading("Tropical vs. True Sky", 14, { kicker: "SECTION 13" });
-  cursor.paragraph(sections.tropicalDifferential);
+  cursor.sectionText(sections.tropicalDifferential);
   drawTropicalComparisonTable(cursor, payload);
 
   cursor.newPage();
   cursor.heading("Integrated Synthesis", 14, { kicker: "SECTION 14" });
-  cursor.paragraph(sections.integratedSynthesis);
+  cursor.sectionText(sections.integratedSynthesis);
 
   drawDisclaimer(cursor);
 
@@ -176,7 +191,7 @@ export async function buildMiniReadingPdf(payload, interpretation) {
     13
   );
   cursor.spacer(4);
-  cursor.paragraph(sections.lilithSection);
+  cursor.sectionText(sections.lilithSection);
 
   cursor.heading("Eve", 15, { kicker: "SECTION 2" });
   cursor.paragraph(
@@ -187,10 +202,10 @@ export async function buildMiniReadingPdf(payload, interpretation) {
     13
   );
   cursor.spacer(4);
-  cursor.paragraph(sections.eveSection);
+  cursor.sectionText(sections.eveSection);
 
   cursor.heading("The Lilith–Eve Axis", 15, { kicker: "SECTION 3" });
-  cursor.paragraph(sections.axisSynthesis);
+  cursor.sectionText(sections.axisSynthesis);
 
   drawDisclaimer(cursor);
   drawPageNumbers(doc, font);
