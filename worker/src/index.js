@@ -60,6 +60,10 @@ export default {
       return handleStatus(url, env);
     }
 
+    if (url.pathname === "/admin/resend" && request.method === "POST") {
+      return handleAdminResend(request, env);
+    }
+
     return new Response("Not found", { status: 404 });
   },
 
@@ -113,6 +117,53 @@ async function handleStatus(url, env) {
     return new Response(JSON.stringify({ status: "pending" }), { status: 200, headers });
   }
   return new Response(JSON.stringify({ status: order.status, updatedAt: order.updatedAt }), { status: 200, headers });
+}
+
+/* One-off recovery path: re-mark a terminal order PAID so the next scheduled() sweep
+   regenerates and re-sends it through the current (fixed) pipeline -- for making right
+   on orders that were fulfilled with placeholder AI text before that bug was fixed.
+   Requires a timing-safe-compared bearer token (env.ADMIN_TOKEN) since it can force
+   reprocessing of any order by id, and refuses anything not already in a terminal
+   state so it can never interrupt an order mid-flight. */
+async function handleAdminResend(request, env) {
+  const headers = { "Content-Type": "application/json" };
+  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!env.ADMIN_TOKEN || !timingSafeEqual(token, env.ADMIN_TOKEN)) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers });
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch (e) {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers });
+  }
+  const orderId = body?.orderId;
+  if (!orderId) {
+    return new Response(JSON.stringify({ error: "orderId is required" }), { status: 400, headers });
+  }
+
+  const order = await getOrder(env, orderId);
+  if (!order) {
+    return new Response(JSON.stringify({ error: `No order found for id ${orderId}` }), { status: 404, headers });
+  }
+  if (order.status !== STATUS.FULFILLED && order.status !== STATUS.FAILED) {
+    return new Response(
+      JSON.stringify({ error: `Order is in status "${order.status}", not a terminal state -- refusing to touch an order that may still be in flight.` }),
+      { status: 409, headers }
+    );
+  }
+
+  const previousStatus = order.status;
+  await setStatus(env, order, STATUS.PAID, { lastError: null });
+  return new Response(JSON.stringify({ ok: true, orderId, previousStatus }), { status: 200, headers });
+}
+
+function timingSafeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return result === 0;
 }
 
 async function handleWebhook(request, env, ctx) {

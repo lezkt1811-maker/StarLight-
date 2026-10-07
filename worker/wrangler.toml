@@ -31,6 +31,9 @@ OWNER_PHONE = "REPLACE_WITH_YOUR_PHONE_NUMBER"
 #   TWILIO_ACCOUNT_SID      Twilio Account SID (console.twilio.com dashboard)
 #   TWILIO_AUTH_TOKEN       Twilio Auth Token (same dashboard)
 #   TWILIO_FROM_NUMBER      The Twilio phone number that sends the text, in E.164
+#   ADMIN_TOKEN             Bearer token for POST /admin/resend -- a recovery endpoint
+#                           that re-marks a fulfilled/failed order PAID so the next
+#                           sweep regenerates and re-sends it. Any long random string.
 
 # Lets us see real console.error output and exceptions from live orders in the
 # Cloudflare dashboard (Worker -> Observability) instead of only inferring what
