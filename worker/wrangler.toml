@@ -31,3 +31,11 @@ OWNER_PHONE = "REPLACE_WITH_YOUR_PHONE_NUMBER"
 #   TWILIO_ACCOUNT_SID      Twilio Account SID (console.twilio.com dashboard)
 #   TWILIO_AUTH_TOKEN       Twilio Auth Token (same dashboard)
 #   TWILIO_FROM_NUMBER      The Twilio phone number that sends the text, in E.164
+
+# Lets us see real console.error output and exceptions from live orders in the
+# Cloudflare dashboard (Worker -> Observability) instead of only inferring what
+# happened from KV status fields. Declared here so a future deploy can't silently
+# turn this back off the way an unconditional secret push once clobbered a
+# manually-fixed secret.
+[observability.logs]
+enabled = true
