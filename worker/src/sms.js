@@ -3,6 +3,10 @@
    seen. Requires three secrets (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER)
    plus the destination OWNER_PHONE var; silently no-ops (logging why) if any are missing,
    the same pattern notifyOwner() already uses for its own prerequisites. */
+import { fetchWithTimeout } from "./http.js";
+
+const TWILIO_TIMEOUT_MS = 15000;
+
 export async function smsOwner(env, message) {
   if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_FROM_NUMBER || !env.OWNER_PHONE) {
     console.error("Cannot text owner — Twilio secrets or OWNER_PHONE missing");
@@ -17,14 +21,14 @@ export async function smsOwner(env, message) {
       Body: String(message).slice(0, 480),
     });
     const auth = btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
-    const resp = await fetch(url, {
+    const resp = await fetchWithTimeout(url, {
       method: "POST",
       headers: {
         Authorization: `Basic ${auth}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: body.toString(),
-    });
+    }, TWILIO_TIMEOUT_MS);
     if (!resp.ok) {
       const text = await resp.text();
       console.error(`Twilio SMS failed (${resp.status}): ${text}`);

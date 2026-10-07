@@ -1,8 +1,12 @@
+import { fetchWithTimeout } from "./http.js";
+
+const RESEND_TIMEOUT_MS = 30000;
+
 export async function sendReadingEmail(env, { toEmail, customerName, pdfBytes, orderRef, productName, filename }) {
   const pdfBase64 = bytesToBase64(pdfBytes);
   const product = productName || "Lilith and Eve Astrology Detailed Reading";
   const attachmentName = filename || "Lilith-and-Eve-Astrology-Detailed-Reading.pdf";
-  const resp = await fetch("https://api.resend.com/emails", {
+  const resp = await fetchWithTimeout("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${env.RESEND_API_KEY}`,
@@ -25,7 +29,7 @@ export async function sendReadingEmail(env, { toEmail, customerName, pdfBytes, o
         },
       ],
     }),
-  });
+  }, RESEND_TIMEOUT_MS);
   if (!resp.ok) {
     const text = await resp.text();
     throw new Error(`Resend API error ${resp.status}: ${text}`);
@@ -37,7 +41,7 @@ export async function sendReadingEmail(env, { toEmail, customerName, pdfBytes, o
    the owner as a record) while the owner finishes the order manually. */
 export async function sendHoldingEmail(env, { toEmail, customerName, orderRef, productName }) {
   const product = productName || "Lilith and Eve Astrology reading";
-  const resp = await fetch("https://api.resend.com/emails", {
+  const resp = await fetchWithTimeout("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${env.RESEND_API_KEY}`,
@@ -56,7 +60,7 @@ export async function sendHoldingEmail(env, { toEmail, customerName, orderRef, p
         `<p style="color:#888;font-size:12px;">Order reference: ${escapeHtml(orderRef || "")}</p>` +
         `<p>✨ Lilith and Eve Astrology</p>`,
     }),
-  });
+  }, RESEND_TIMEOUT_MS);
   if (!resp.ok) {
     const text = await resp.text();
     throw new Error(`Resend API error ${resp.status}: ${text}`);
@@ -71,7 +75,7 @@ export async function notifyOwner(env, { orderRef, email, error }) {
     return;
   }
   try {
-    await fetch("https://api.resend.com/emails", {
+    await fetchWithTimeout("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -85,7 +89,7 @@ export async function notifyOwner(env, { orderRef, email, error }) {
           `<p>Error: ${escapeHtml(error || "unknown")}</p>` +
           `<p>Please follow up and send the customer their reading manually.</p>`,
       }),
-    });
+    }, RESEND_TIMEOUT_MS);
   } catch (e) {
     console.error("Failed to notify owner of fulfillment failure", e.message);
   }
