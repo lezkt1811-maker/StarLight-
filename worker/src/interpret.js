@@ -1,4 +1,5 @@
 import { deriveChartFacts, describeOccupants } from "./facts.js";
+import { fetchWithTimeout } from "./http.js";
 
 const TOOL_NAME = "write_reading_sections";
 
@@ -20,26 +21,6 @@ function requireAnthropicKey(env) {
     );
   }
   return key;
-}
-
-/* A real order sat stuck in "generating" for 18+ minutes with no error recorded --
-   the fetch() to Anthropic had no timeout, so a hung or silent-forever response left
-   the order with no success, no failure, no alert, nothing. AbortController guarantees
-   this call eventually rejects (which the retry loop and hold-on-failure logic already
-   know how to handle) instead of just never resolving. */
-async function fetchWithTimeout(url, options, timeoutMs) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } catch (err) {
-    if (err.name === "AbortError") {
-      throw new Error(`Anthropic API call timed out after ${timeoutMs}ms`);
-    }
-    throw err;
-  } finally {
-    clearTimeout(timer);
-  }
 }
 
 /* Every section the AI is asked to write. "ophiuchusSection" is added to the
