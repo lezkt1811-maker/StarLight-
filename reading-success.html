@@ -26,6 +26,12 @@ p{font-size:14px;line-height:1.7;color:rgba(255,233,168,.85);margin-bottom:14px;
 .status-line{font-family:'Courier New',monospace; font-size:12px; color:rgba(255,233,168,.55); margin-top:16px;}
 .status-line.ready{color:#8dffb0;}
 .status-line.failed{color:#ff8f8f;}
+.progress-row{display:flex; align-items:center; gap:10px; margin-top:16px;}
+.progress-track{flex:1; height:10px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid rgba(255,215,0,.25); overflow:hidden;}
+.progress-fill{height:100%; width:0%; border-radius:999px; background:linear-gradient(90deg,#ffd700,#ffb347); box-shadow:0 0 10px rgba(255,215,0,.6); transition:width 1.1s ease, background .4s ease;}
+.progress-fill.ready{background:linear-gradient(90deg,#8dffb0,#2ee884);}
+.progress-fill.failed{background:linear-gradient(90deg,#ff8f8f,#ff5050);}
+.progress-pct{font-family:'Courier New',monospace; font-size:12px; color:rgba(255,233,168,.75); min-width:34px; text-align:right;}
 .btn-back{
   display:inline-block; margin-top:20px; padding:14px 28px; border-radius:999px;
   border:1px solid rgba(255,215,0,.4); background:rgba(255,215,0,.06); color:#ffd700;
@@ -43,6 +49,10 @@ p{font-size:14px;line-height:1.7;color:rgba(255,233,168,.85);margin-bottom:14px;
     <p>Your Lilith and Eve Astrology reading is being prepared using the exact chart you already generated.</p>
     <p>It will be emailed to you automatically as a PDF — usually within a few minutes. You don't need to keep this page open, and there's nothing else for you to do.</p>
     <div class="status-line" id="statusLine">Checking status…</div>
+    <div class="progress-row">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-pct" id="progressPct">0%</div>
+    </div>
   </div>
   <a class="btn-back" href="index.html">&larr; Back to Lilith and Eve Astrology</a>
   <p class="contact">
@@ -82,6 +92,32 @@ p{font-size:14px;line-height:1.7;color:rgba(255,233,168,.85);margin-bottom:14px;
     pending: "Waiting for payment confirmation…",
   };
 
+  /* Real fulfillment stages, not a simulated/fake progress animation -- each number is
+     how far through the actual pipeline (webhook -> AI writing -> PDF -> email) that
+     stage represents. "failed" freezes the bar wherever it last was, in red, rather
+     than resetting it, since the work really did get partway through. */
+  const stagePercent = {
+    prepared: 8,
+    pending: 8,
+    paid: 20,
+    generating: 50,
+    generated: 78,
+    emailing: 92,
+    fulfilled: 100,
+  };
+
+  const progressFill = document.getElementById("progressFill");
+  const progressPct = document.getElementById("progressPct");
+  let lastPercent = 0;
+
+  function setProgress(status){
+    const target = stagePercent[status];
+    if(typeof target === "number") lastPercent = target;
+    progressFill.style.width = lastPercent + "%";
+    progressPct.textContent = lastPercent + "%";
+    progressFill.className = "progress-fill" + (status === "fulfilled" ? " ready" : status === "failed" ? " failed" : "");
+  }
+
   let attempts = 0;
   function poll(){
     attempts++;
@@ -91,6 +127,7 @@ p{font-size:14px;line-height:1.7;color:rgba(255,233,168,.85);margin-bottom:14px;
         const label = labels[data.status] || "Checking status…";
         statusEl.textContent = label;
         statusEl.className = "status-line" + (data.status === "fulfilled" ? " ready" : data.status === "failed" ? " failed" : "");
+        setProgress(data.status);
         if(data.status !== "fulfilled" && data.status !== "failed" && attempts < 40){
           setTimeout(poll, 4000);
         }
