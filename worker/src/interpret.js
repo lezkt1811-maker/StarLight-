@@ -58,7 +58,12 @@ export async function generateInterpretation(env, payload) {
 
   const body = {
     model,
-    max_tokens: 6000,
+    // 13 substantial prose sections need real headroom -- 6000 was cutting the
+    // response off mid-way (confirmed: both retry attempts failed on the exact same
+    // field, allHousesNarrative, the 10th of 13 required fields -- a deterministic
+    // truncation, not a flaky one). Anthropic's own guidance for a non-streaming
+    // request like this one is to default to ~16000 rather than lowball it.
+    max_tokens: 16000,
     messages: [
       {
         role: "user",
@@ -97,7 +102,11 @@ export async function generateInterpretation(env, payload) {
       },
       body: JSON.stringify(body),
     },
-    55000
+    // Processing now runs on the Cron Trigger (15-minute wall-clock budget), not
+    // inside the webhook's waitUntil -- so there's real room here. 55s was sized for
+    // the old constraint and risked timing out a response that's legitimately still
+    // writing with the larger max_tokens above, not actually hung.
+    170000
   );
 
   if (!resp.ok) {
@@ -231,7 +240,7 @@ export async function generateMiniInterpretation(env, payload) {
 
   const body = {
     model,
-    max_tokens: 1200,
+    max_tokens: 3000,
     messages: [
       {
         role: "user",
@@ -267,7 +276,9 @@ export async function generateMiniInterpretation(env, payload) {
       },
       body: JSON.stringify(body),
     },
-    55000
+    // Smaller max_tokens than the full reading, but still generous now that
+    // processing runs on the Cron Trigger rather than inside webhook waitUntil.
+    90000
   );
 
   if (!resp.ok) {

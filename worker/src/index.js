@@ -17,7 +17,11 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // of that slow work itself: it just marks the order PAID and returns. A Cron Trigger
 // (below) picks up PAID orders on its own schedule, where there's no prior response to
 // extend past, so the full chain gets to run to completion.
-const STALE_GENERATING_MS = 3 * 60 * 1000;
+// Must comfortably exceed the worst-case time a single order can legitimately spend
+// in GENERATING: up to two Anthropic attempts at 170s each (interpret.js) plus a
+// short sleep between them, then PDF + email. Too short here would make the sweep
+// re-pick (and reprocess) an order that's still mid-attempt, not actually abandoned.
+const STALE_GENERATING_MS = 10 * 60 * 1000;
 
 /* Alerts the owner on every channel we have -- email (easy to miss) and a text
    (the one actually meant to be seen). Both are best-effort; neither throws. */
