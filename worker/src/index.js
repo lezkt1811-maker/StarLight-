@@ -28,7 +28,7 @@ const STALE_GENERATING_MS = 10 * 60 * 1000;
 async function alertOwner(env, { orderRef, email, error }) {
   await Promise.allSettled([
     notifyOwner(env, { orderRef, email, error }),
-    smsOwner(env, `Lilith and Eve Astrology: order ${orderRef || "?"} needs manual fulfillment. ${error || ""}`),
+    smsOwner(env, `Star Chart 13: order ${orderRef || "?"} needs manual fulfillment. ${error || ""}`),
   ]);
 }
 
