@@ -242,7 +242,7 @@ export async function generateMiniInterpretation(env, payload) {
 
   const body = {
     model,
-    max_tokens: 3000,
+    max_tokens: 6000,
     messages: [
       {
         role: "user",
@@ -306,9 +306,9 @@ export async function generateMiniInterpretation(env, payload) {
 function buildMiniPrompt(payload, facts) {
   const lines = [];
   lines.push(
-    "You are writing a short, personalized \"Lilith & Eve Placement Reading\" — a focused " +
-      "$7 mini reading from Lilith and Eve Astrology covering only Black Moon Lilith and Eve " +
-      "(lunar apogee/perigee interpretive points) in the customer's True-Sky chart."
+    "You are writing a personalized \"Lilith & Eve Placement Reading\" — a focused " +
+      "$7 reading from Lilith and Eve Astrology covering only Black Moon Lilith and Eve " +
+      "(lunar apogee/perigee interpretive points) in the customer's True-Sky chart, in real depth."
   );
   lines.push("");
   lines.push(`Customer name: ${payload.customer?.name || "the customer"}`);
@@ -338,9 +338,10 @@ function buildMiniPrompt(payload, facts) {
   lines.push("");
   lines.push(`Call the ${MINI_TOOL_NAME} tool now with exactly these fields: ${MINI_SECTION_FIELDS.join(", ")}. Do not respond in plain text — submit your answer only as a call to this tool.`);
   lines.push("Field guide:");
-  lines.push("- lilithSection: 2-3 sentences on this person's Black Moon Lilith placement (sign, house) and what it means for autonomy, instinct, and what they refuse to suppress.");
-  lines.push("- eveSection: 2-3 sentences on this person's Eve placement (sign, house) and what it means for embodiment, closeness, and intimacy.");
-  lines.push("- axisSynthesis: 2-3 sentences tying Lilith and Eve together as a polarity in this specific chart — how this person might balance autonomy and connection.");
+  lines.push("- lilithSection: 2-3 full paragraphs on this person's Black Moon Lilith placement (sign, house) and what it means for autonomy, instinct, and what they refuse to suppress.");
+  lines.push("- eveSection: 2-3 full paragraphs on this person's Eve placement (sign, house) and what it means for embodiment, closeness, and intimacy.");
+  lines.push("- axisSynthesis: 1-2 full paragraphs tying Lilith and Eve together as a polarity in this specific chart — how this person might balance autonomy and connection.");
+  lines.push("Within each field, separate paragraphs with a blank line (two newlines). This is a formatting instruction only.");
   return lines.join("\n");
 }
 
