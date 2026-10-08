@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://nominatim.openstreetmap.org https://timeapi.io https://starchart13-fulfillment.lezkt1811.workers.dev; object-src 'none'; base-uri 'self';">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Privacy | Star Chart 13</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700;800;900&display=swap');
@@ -24,7 +26,7 @@ a{color:#00e5ff;}
 
   <h2>Personalized readings</h2>
   <p>If you request a $25 personalized reading, the following is sent privately for the purpose of preparing and delivering that reading: your name, email address, birth date, exact birth time, birth location, any optional question you provide, your order number, submission date, and a referral code if you arrived through a promoter's link. This information is delivered privately and is not published anywhere.</p>
-  <p>We do not collect or store your Cash App password, PIN, banking information, or complete payment credentials. Payments are completed directly through Cash App.</p>
+  <p>We do not collect or store your card number or complete payment credentials. Payments are processed directly by Stripe, a PCI-compliant payment processor; we never see or store your full card details.</p>
 
   <h2>Referral codes</h2>
   <p>If you arrive through a promoter's link, a referral code is stored in your browser for up to 30 days so that promoter can be credited if you purchase a reading. A referral code never changes your $25 price.</p>
