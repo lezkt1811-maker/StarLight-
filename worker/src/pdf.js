@@ -216,7 +216,7 @@ export async function buildMiniReadingPdf(payload, interpretation) {
 function drawMiniCover(cursor, payload) {
   const { page } = cursor;
   cursor.y = PAGE_SIZE[1] - 220;
-  page.drawText("Lilith and Eve Astrology", { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: ACCENT });
+  page.drawText("Star Chart 13", { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: ACCENT });
   cursor.y -= 34;
   page.drawText("Lilith & Eve Placement Reading", { x: MARGIN, y: cursor.y, size: 15, font: cursor.font, color: INK });
   cursor.y -= 22;
@@ -242,7 +242,7 @@ function drawMiniCover(cursor, payload) {
 function fallbackMiniSections(facts) {
   const note =
     " (The full written interpretation couldn't be generated automatically this time — " +
-    "the data above is complete and accurate, and Lilith and Eve Astrology will follow up with the full narrative.)";
+    "the data above is complete and accurate, and Star Chart 13 will follow up with the full narrative.)";
   return {
     lilithSection:
       (facts.lilithPoint
@@ -259,7 +259,7 @@ function fallbackMiniSections(facts) {
 function drawCover(cursor, payload) {
   const { page } = cursor;
   cursor.y = PAGE_SIZE[1] - 220;
-  page.drawText("Lilith and Eve Astrology", { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: ACCENT });
+  page.drawText("Star Chart 13", { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: ACCENT });
   cursor.y -= 34;
   page.drawText("Detailed True-Sky Natal Reading", { x: MARGIN, y: cursor.y, size: 15, font: cursor.font, color: INK });
   cursor.y -= 22;
@@ -353,7 +353,7 @@ function drawDisclaimer(cursor) {
   cursor.spacer(20);
   cursor.heading("Framework & Disclaimer", 12);
   cursor.paragraph(
-    "Lilith and Eve Astrology calculates placements against the real astronomical positions of the 13 constellations " +
+    "Star Chart 13 calculates placements against the real astronomical positions of the 13 constellations " +
       "the ecliptic actually passes through (including Ophiuchus), verified against astronomy references " +
       "such as Sky Map and Stellarium — that part is astronomical fact. The interpretations in this reading " +
       "are an astrological framework applied to those facts, offered for reflection and entertainment purposes.",
@@ -378,7 +378,7 @@ function drawPageNumbers(doc, font) {
 function fallbackSections(payload, facts) {
   const note =
     " (The full written interpretation for this section couldn't be generated automatically this time — " +
-    "the data above is complete and accurate, and Lilith and Eve Astrology will follow up with the full narrative.)";
+    "the data above is complete and accurate, and Star Chart 13 will follow up with the full narrative.)";
   const asc = facts.ascendant;
   return {
     chartGlance: (asc ? `Your Ascendant is in ${asc.constellation} ${Math.floor(asc.degree)}°.` : "") + note,

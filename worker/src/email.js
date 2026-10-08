@@ -4,7 +4,7 @@ const RESEND_TIMEOUT_MS = 30000;
 
 export async function sendReadingEmail(env, { toEmail, customerName, pdfBytes, orderRef, productName, filename }) {
   const pdfBase64 = bytesToBase64(pdfBytes);
-  const product = productName || "Lilith and Eve Astrology Detailed Reading";
+  const product = productName || "Star Chart 13 Detailed Reading";
   const attachmentName = filename || "Lilith-and-Eve-Astrology-Detailed-Reading.pdf";
   const resp = await fetchWithTimeout("https://api.resend.com/emails", {
     method: "POST",
@@ -13,7 +13,7 @@ export async function sendReadingEmail(env, { toEmail, customerName, pdfBytes, o
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: env.FROM_EMAIL || "Lilith and Eve Astrology <readings@starchart13.com>",
+      from: env.FROM_EMAIL || "Star Chart 13 <readings@starchart13.com>",
       to: [toEmail],
       bcc: env.CONTACT_EMAIL ? [env.CONTACT_EMAIL] : undefined,
       subject: `Your ${product} (PDF attached)`,
@@ -21,7 +21,7 @@ export async function sendReadingEmail(env, { toEmail, customerName, pdfBytes, o
         `<p>Hi ${escapeHtml(customerName || "there")},</p>` +
         `<p>Thank you for your ${escapeHtml(product)} purchase. Your personalized PDF is attached.</p>` +
         `<p style="color:#888;font-size:12px;">Order reference: ${escapeHtml(orderRef || "")}</p>` +
-        `<p>✨ Lilith and Eve Astrology</p>`,
+        `<p>✨ Star Chart 13</p>`,
       attachments: [
         {
           filename: attachmentName,
@@ -40,7 +40,7 @@ export async function sendReadingEmail(env, { toEmail, customerName, pdfBytes, o
    never ship a PDF full of placeholder text. Keeps the customer informed (and bcc'd to
    the owner as a record) while the owner finishes the order manually. */
 export async function sendHoldingEmail(env, { toEmail, customerName, orderRef, productName }) {
-  const product = productName || "Lilith and Eve Astrology reading";
+  const product = productName || "Star Chart 13 reading";
   const resp = await fetchWithTimeout("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -48,7 +48,7 @@ export async function sendHoldingEmail(env, { toEmail, customerName, orderRef, p
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: env.FROM_EMAIL || "Lilith and Eve Astrology <readings@starchart13.com>",
+      from: env.FROM_EMAIL || "Star Chart 13 <readings@starchart13.com>",
       to: [toEmail],
       bcc: env.CONTACT_EMAIL ? [env.CONTACT_EMAIL] : undefined,
       subject: `Your ${product} is being personally finished`,
@@ -58,7 +58,7 @@ export async function sendHoldingEmail(env, { toEmail, customerName, orderRef, p
         `automatic writing step hit a snag, so rather than send you an incomplete reading, we're finishing yours ` +
         `personally. You'll receive your complete PDF by email shortly.</p>` +
         `<p style="color:#888;font-size:12px;">Order reference: ${escapeHtml(orderRef || "")}</p>` +
-        `<p>✨ Lilith and Eve Astrology</p>`,
+        `<p>✨ Star Chart 13</p>`,
     }),
   }, RESEND_TIMEOUT_MS);
   if (!resp.ok) {
@@ -79,9 +79,9 @@ export async function notifyOwner(env, { orderRef, email, error }) {
       method: "POST",
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: env.FROM_EMAIL || "Lilith and Eve Astrology <readings@starchart13.com>",
+        from: env.FROM_EMAIL || "Star Chart 13 <readings@starchart13.com>",
         to: [env.CONTACT_EMAIL],
-        subject: `Lilith and Eve Astrology order needs manual fulfillment (${orderRef || "unknown order"})`,
+        subject: `Star Chart 13 order needs manual fulfillment (${orderRef || "unknown order"})`,
         html:
           `<p>Automatic PDF delivery failed for a paid order.</p>` +
           `<p>Order: ${escapeHtml(orderRef || "unknown")}</p>` +
