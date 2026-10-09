@@ -3,8 +3,10 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://nominatim.openstreetmap.org https://timeapi.io https://starchart13-fulfillment.lezkt1811.workers.dev; object-src 'none'; base-uri 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://nominatim.openstreetmap.org https://timeapi.io https://starchart13-fulfillment.lezkt1811.workers.dev https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com; object-src 'none'; base-uri 'self';">
 <meta name="referrer" content="strict-origin-when-cross-origin">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M2TKEEQX6J"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-M2TKEEQX6J");</script>
 <title>Payment Received | Star Chart 13</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -83,6 +85,24 @@ p{font-size:14px;line-height:1.7;color:rgba(255,233,168,.85);margin-bottom:14px;
     return;
   }
 
+  /* Fires a GA event at most once per Checkout Session ID, using localStorage as the
+     dedup store -- so a refresh or revisit of this exact success-page URL (same
+     session_id in the query string) never double-counts a purchase or delivery,
+     no matter how many times /status is polled or the page is reloaded. */
+  function gaOnce(key, name, params){
+    try{
+      const storeKey = "sc13_ga_" + key + "_" + sessionId;
+      if(localStorage.getItem(storeKey)) return;
+      localStorage.setItem(storeKey, "1");
+      if(typeof gtag === "function") gtag("event", name, params || {});
+    }catch(e){}
+  }
+
+  const PRODUCT_BY_SCHEMA = {
+    "starchart13-detailed-reading": {product_id:"full_reading_25", price:25},
+    "starchart13-mini-reading": {product_id:"mini_reading_7", price:7},
+  };
+
   const labels = {
     prepared: "Waiting for payment confirmation…",
     paid: "Payment confirmed — starting your reading…",
@@ -130,6 +150,20 @@ p{font-size:14px;line-height:1.7;color:rgba(255,233,168,.85);margin-bottom:14px;
         statusEl.textContent = label;
         statusEl.className = "status-line" + (data.status === "fulfilled" ? " ready" : data.status === "failed" ? " failed" : "");
         setProgress(data.status);
+
+        const product = PRODUCT_BY_SCHEMA[data.schema] || {};
+        // Stripe only ever redirects here after a completed Checkout Session, so any
+        // status at or past "paid" is itself the purchase-confirmation signal.
+        if(data.status && data.status !== "pending" && data.status !== "prepared"){
+          gaOnce("purchase", "reading_purchase_completed", product);
+        }
+        if(data.status === "fulfilled"){
+          gaOnce("delivered", "reading_delivery_completed", product);
+        }
+        if(data.status === "failed"){
+          gaOnce("failed", "reading_delivery_failed", product);
+        }
+
         if(data.status !== "fulfilled" && data.status !== "failed" && attempts < 40){
           setTimeout(poll, 4000);
         }

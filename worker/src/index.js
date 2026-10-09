@@ -116,7 +116,10 @@ async function handleStatus(url, env) {
   if (!order) {
     return new Response(JSON.stringify({ status: "pending" }), { status: 200, headers });
   }
-  return new Response(JSON.stringify({ status: order.status, updatedAt: order.updatedAt }), { status: 200, headers });
+  return new Response(
+    JSON.stringify({ status: order.status, updatedAt: order.updatedAt, schema: order.payload?.schema || null }),
+    { status: 200, headers }
+  );
 }
 
 /* One-off recovery path: re-mark a terminal order PAID so the next scheduled() sweep
