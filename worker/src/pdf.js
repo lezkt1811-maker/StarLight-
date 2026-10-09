@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { deriveChartFacts, describeOccupants } from "./facts.js";
+import { resolveBrand, applyBrand } from "./brand.js";
 
 const PAGE_SIZE = [612, 792]; // US Letter
 const MARGIN = 54;
@@ -29,7 +30,7 @@ class Cursor {
       this.page.drawText(opts.kicker, { x: MARGIN, y: this.y, size: 9, font: this.boldFont, color: MUTED });
       this.y -= 12;
     }
-    this.page.drawText(text, { x: MARGIN, y: this.y, size, font: this.boldFont, color: ACCENT });
+    this.page.drawText(text, { x: MARGIN, y: this.y, size, font: this.boldFont, color: (this.brand && this.brand.accent) || ACCENT });
     this.y -= size + 12;
   }
   paragraph(text, size = 10.5, lineHeight = 15) {
@@ -95,8 +96,10 @@ export async function buildReadingPdf(payload, interpretation) {
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
   const facts = deriveChartFacts(payload);
-  const sections = interpretation || fallbackSections(payload, facts);
+  const brand = resolveBrand(payload);
+  const sections = applyBrand(interpretation || fallbackSections(payload, facts), brand);
   const cursor = new Cursor(doc, font, boldFont);
+  cursor.brand = brand;
 
   drawCover(cursor, payload);
 
@@ -176,8 +179,10 @@ export async function buildMiniReadingPdf(payload, interpretation) {
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
   const facts = deriveChartFacts(payload);
-  const sections = interpretation || fallbackMiniSections(facts);
+  const brand = resolveBrand(payload);
+  const sections = applyBrand(interpretation || fallbackMiniSections(facts), brand);
   const cursor = new Cursor(doc, font, boldFont);
+  cursor.brand = brand;
 
   drawMiniCover(cursor, payload);
 
@@ -216,9 +221,10 @@ export async function buildMiniReadingPdf(payload, interpretation) {
 function drawMiniCover(cursor, payload) {
   const { page } = cursor;
   cursor.y = PAGE_SIZE[1] - 220;
-  page.drawText("Star Chart 13", { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: ACCENT });
+  const brand = cursor.brand || resolveBrand(payload);
+  page.drawText(brand.name, { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: brand.accent });
   cursor.y -= 34;
-  page.drawText("Lilith & Eve Placement Reading", { x: MARGIN, y: cursor.y, size: 15, font: cursor.font, color: INK });
+  page.drawText(brand.miniTitle, { x: MARGIN, y: cursor.y, size: 15, font: cursor.font, color: INK });
   cursor.y -= 22;
   page.drawText("Black Moon Lilith • Eve • The Axis Between Them", { x: MARGIN, y: cursor.y, size: 10, font: cursor.font, color: MUTED });
   cursor.y -= 44;
@@ -259,11 +265,12 @@ function fallbackMiniSections(facts) {
 function drawCover(cursor, payload) {
   const { page } = cursor;
   cursor.y = PAGE_SIZE[1] - 220;
-  page.drawText("Star Chart 13", { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: ACCENT });
+  const brand = cursor.brand || resolveBrand(payload);
+  page.drawText(brand.name, { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: brand.accent });
   cursor.y -= 34;
-  page.drawText("Detailed True-Sky Natal Reading", { x: MARGIN, y: cursor.y, size: 15, font: cursor.font, color: INK });
+  page.drawText(brand.readingTitle, { x: MARGIN, y: cursor.y, size: 15, font: cursor.font, color: INK });
   cursor.y -= 22;
-  page.drawText("13 Signs • 13 Houses • Ophiuchus Included", { x: MARGIN, y: cursor.y, size: 10, font: cursor.font, color: MUTED });
+  page.drawText(brand.tagline, { x: MARGIN, y: cursor.y, size: 10, font: cursor.font, color: MUTED });
   cursor.y -= 44;
 
   const c = payload.customer || {};
@@ -353,7 +360,7 @@ function drawDisclaimer(cursor) {
   cursor.spacer(20);
   cursor.heading("Framework & Disclaimer", 12);
   cursor.paragraph(
-    "Star Chart 13 calculates placements against the real astronomical positions of the 13 constellations " +
+    ((cursor.brand && cursor.brand.name) || "Star Chart 13") + " calculates placements against the real astronomical positions of the 13 constellations " +
       "the ecliptic actually passes through (including Ophiuchus), verified against astronomy references " +
       "such as Sky Map and Stellarium — that part is astronomical fact. The interpretations in this reading " +
       "are an astrological framework applied to those facts, offered for reflection and entertainment purposes.",

@@ -2,6 +2,7 @@ import { buildReadingPdf, buildMiniReadingPdf } from "./pdf.js";
 import { generateInterpretation, generateMiniInterpretation } from "./interpret.js";
 import { sendReadingEmail, sendHoldingEmail, notifyOwner } from "./email.js";
 import { smsOwner } from "./sms.js";
+import { resolveBrand, applyBrand } from "./brand.js";
 
 const VALID_SCHEMAS = ["starchart13-detailed-reading", "starchart13-mini-reading"];
 import { STATUS, createOrder, getOrder, getOrderIdBySession, setStatus } from "./orders.js";
@@ -25,16 +26,23 @@ const STALE_GENERATING_MS = 10 * 60 * 1000;
 
 /* Alerts the owner on every channel we have -- email (easy to miss) and a text
    (the one actually meant to be seen). Both are best-effort; neither throws. */
-async function alertOwner(env, { orderRef, email, error }) {
+async function alertOwner(env, { orderRef, email, error, brand }) {
   await Promise.allSettled([
-    notifyOwner(env, { orderRef, email, error }),
-    smsOwner(env, `Star Chart 13: order ${orderRef || "?"} needs manual fulfillment. ${error || ""}`),
+    notifyOwner(env, { orderRef, email, error, brand }),
+    smsOwner(env, `${(brand && brand.name) || "Star Chart 13"}: order ${orderRef || "?"} needs manual fulfillment. ${error || ""}`),
   ]);
 }
 
+/* ALLOWED_ORIGIN may list several storefronts, comma-separated. The browser only
+   accepts a single origin in the response header, so echo the caller's origin back
+   when it is on the list (and fall back to the first entry otherwise). */
+let requestOrigin = "";
 function corsHeaders(env) {
+  const allowed = String(env.ALLOWED_ORIGIN || "*").split(",").map((s) => s.trim()).filter(Boolean);
+  const origin = allowed.includes("*") ? "*" : (allowed.includes(requestOrigin) ? requestOrigin : allowed[0]);
   return {
-    "Access-Control-Allow-Origin": env.ALLOWED_ORIGIN || "*",
+    "Vary": "Origin",
+    "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
   };
@@ -43,6 +51,7 @@ function corsHeaders(env) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    requestOrigin = request.headers.get("Origin") || "";
 
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: corsHeaders(env) });
@@ -272,6 +281,7 @@ async function processOrder(env, order) {
   const stripeSessionId = order.stripeSessionId;
   const email = order.customerEmail;
   const isMini = order.payload.schema === "starchart13-mini-reading";
+  const brand = resolveBrand(order.payload);
 
   try {
     order = await setStatus(env, order, STATUS.GENERATING, { attempts: order.attempts + 1 });
@@ -305,8 +315,10 @@ async function processOrder(env, order) {
         customerName: order.payload.customer?.name,
         orderRef: stripeSessionId,
         productName: order.payload.product?.name,
+        brand,
       });
       await alertOwner(env, {
+        brand,
         orderRef: stripeSessionId,
         email,
         error: `AI interpretation failed twice — reading HELD, customer was sent a holding email instead of a PDF. Underlying error: ${interpretationError?.message}`,
@@ -327,13 +339,14 @@ async function processOrder(env, order) {
       pdfBytes,
       orderRef: stripeSessionId,
       productName: order.payload.product?.name,
-      filename: isMini ? "Lilith-and-Eve-Placement-Reading.pdf" : "Lilith-and-Eve-Astrology-Detailed-Reading.pdf",
+      filename: isMini ? brand.miniPdfFilename : brand.pdfFilename,
+      brand,
     });
 
     await setStatus(env, order, STATUS.FULFILLED, { lastError: null });
   } catch (err) {
     console.error("Order fulfillment failed", order.orderId, stripeSessionId, err.message);
     await setStatus(env, order, STATUS.FAILED, { lastError: err.message });
-    await alertOwner(env, { orderRef: stripeSessionId, email, error: err.message });
+    await alertOwner(env, { orderRef: stripeSessionId, email, error: err.message, brand });
   }
 }

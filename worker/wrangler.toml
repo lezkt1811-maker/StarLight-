@@ -14,7 +14,8 @@ binding = "ORDERS"
 id = "a6cc1b69004d4c0c86599630a9546f95"
 
 [vars]
-ALLOWED_ORIGIN = "https://starchart13.com"
+# Comma-separated list of storefront origins allowed to call /prepare and /status.
+ALLOWED_ORIGIN = "https://starchart13.com,https://lezkt1811-maker.github.io"
 FROM_EMAIL = "Lilith and Eve Astrology <readings@starchart13.com>"
 CONTACT_EMAIL = "katythomas96@yahoo.com"
 CLAUDE_MODEL = "claude-sonnet-5-5"

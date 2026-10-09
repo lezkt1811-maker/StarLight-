@@ -1,3 +1,4 @@
+import { resolveBrand, applyBrand } from "./brand.js";
 import { deriveChartFacts, describeOccupants } from "./facts.js";
 import { fetchWithTimeout } from "./http.js";
 
@@ -67,7 +68,7 @@ export async function generateInterpretation(env, payload) {
     messages: [
       {
         role: "user",
-        content: buildPrompt(payload, facts, sectionFields),
+        content: applyBrand(buildPrompt(payload, facts, sectionFields), resolveBrand(payload)),
       },
     ],
     tools: [
@@ -246,7 +247,7 @@ export async function generateMiniInterpretation(env, payload) {
     messages: [
       {
         role: "user",
-        content: buildMiniPrompt(payload, facts),
+        content: applyBrand(buildMiniPrompt(payload, facts), resolveBrand(payload)),
       },
     ],
     tools: [
