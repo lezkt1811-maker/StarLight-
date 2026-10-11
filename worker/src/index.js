@@ -210,7 +210,15 @@ async function handleAdminLog(url, env) {
   }
   orders.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
-  return new Response(renderAdminLogHtml(orders, token), {
+  // Your own checkout tests (same email as CONTACT_EMAIL, the owner alert address)
+  // are hidden by default so the list reads as real customers only. Nothing is
+  // deleted -- ?all=1 shows everything, test orders included.
+  const showAll = url.searchParams.get("all") === "1";
+  const ownEmail = (env.CONTACT_EMAIL || "").toLowerCase();
+  const hiddenCount = ownEmail ? orders.filter((o) => (o.customerEmail || "").toLowerCase() === ownEmail).length : 0;
+  const visibleOrders = showAll || !ownEmail ? orders : orders.filter((o) => (o.customerEmail || "").toLowerCase() !== ownEmail);
+
+  return new Response(renderAdminLogHtml(visibleOrders, token, { showAll, hiddenCount, hasOwnEmail: !!ownEmail }), {
     status: 200,
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });
@@ -252,7 +260,8 @@ function escapeHtml(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-function renderAdminLogHtml(orders, token) {
+function renderAdminLogHtml(orders, token, viewState = {}) {
+  const { showAll = false, hiddenCount = 0, hasOwnEmail = false } = viewState;
   const rows = orders.map((o) => {
     const c = o.payload?.customer || {};
     const attr = o.payload?.attribution || {};
@@ -334,9 +343,16 @@ h1{font-size:18px;margin:0 0 4px;}
 .pts th{text-align:left;color:#22D3EE;font-weight:700;padding:3px 6px;border-bottom:1px solid rgba(99,102,241,.3);}
 .pts td{padding:3px 6px;border-bottom:1px solid rgba(99,102,241,.1);}
 .pdf-link{display:inline-block;margin:4px 0 10px;padding:8px 14px;border-radius:8px;border:1px solid rgba(34,211,238,.5);color:#22D3EE;text-decoration:none;font-size:12px;font-weight:700;}
+.toggle{font-size:12px;opacity:.75;}
+.toggle a{color:#22D3EE;}
 </style></head><body>
 <h1>Reading Log</h1>
 <div class="count">${orders.length} order${orders.length === 1 ? "" : "s"} &middot; most recent first</div>
+${hasOwnEmail ? `<div class="toggle">${
+  showAll
+    ? `Showing everything, including your own test orders. <a href="/admin/log?token=${encodeURIComponent(token)}">Hide my test orders</a>`
+    : `${hiddenCount} of your own test order${hiddenCount === 1 ? "" : "s"} hidden. <a href="/admin/log?token=${encodeURIComponent(token)}&all=1">Show everything</a>`
+}</div>` : ""}
 ${rows || "<p>No orders yet.</p>"}
 </body></html>`;
 }
