@@ -64,6 +64,10 @@ export default {
       return handleAdminResend(request, url, env);
     }
 
+    if (url.pathname === "/admin/log" && request.method === "GET") {
+      return handleAdminLog(url, env);
+    }
+
     return new Response("Not found", { status: 404 });
   },
 
@@ -175,6 +179,99 @@ function timingSafeEqual(a, b) {
   let result = 0;
   for (let i = 0; i < a.length; i++) result |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return result === 0;
+}
+
+/* A simple, read-only business log: every order, newest first, with the customer's
+   info, birth details, and -- for anything fulfilled since this was added -- the
+   actual written reading, right there to review. Same bearer-token model as
+   /admin/resend, just GET-only and side-effect-free. Orders fulfilled before this
+   endpoint existed won't have a saved "interpretation" (that text was never kept
+   anywhere before now), so those rows say so instead of showing blank content. */
+async function handleAdminLog(url, env) {
+  const token = url.searchParams.get("token") || "";
+  if (!env.ADMIN_TOKEN || !timingSafeEqual(token, env.ADMIN_TOKEN)) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const orders = [];
+  let cursor;
+  while (true) {
+    const page = await env.ORDERS.list({ prefix: "order:", cursor });
+    for (const key of page.keys) {
+      const raw = await env.ORDERS.get(key.name);
+      if (raw) orders.push(JSON.parse(raw));
+    }
+    if (page.list_complete) break;
+    cursor = page.cursor;
+  }
+  orders.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+  return new Response(renderAdminLogHtml(orders), {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+
+function escapeHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function renderAdminLogHtml(orders) {
+  const rows = orders.map((o) => {
+    const c = o.payload?.customer || {};
+    const isMini = o.payload?.schema === "starchart13-mini-reading";
+    const product = isMini ? "Mini Reading ($7)" : "Full Reading ($25)";
+    const birth = [c.birthDate, c.birthTime24h, c.birthLocation].filter(Boolean).join(" · ");
+
+    const sections = o.interpretation
+      ? Object.entries(o.interpretation)
+          .map(
+            ([k, v]) =>
+              `<div class="sec"><div class="sec-label">${escapeHtml(k)}</div><div class="sec-text">${escapeHtml(v)}</div></div>`
+          )
+          .join("")
+      : `<div class="sec-text" style="opacity:.6;">No saved reading text for this order (sent before this log existed, or not yet fulfilled).</div>`;
+
+    return `<details class="order">
+  <summary>
+    <span class="od">${escapeHtml((o.createdAt || "").slice(0, 10))}</span>
+    <span class="on">${escapeHtml(c.name || "(no name)")}</span>
+    <span class="oe">${escapeHtml(o.customerEmail || "")}</span>
+    <span class="op">${product}</span>
+    <span class="os status-${escapeHtml(o.status)}">${escapeHtml(o.status)}</span>
+  </summary>
+  <div class="order-body">
+    <div class="meta">Order ${escapeHtml(o.orderId)} &middot; Birth: ${escapeHtml(birth) || "—"} &middot; Attempts: ${o.attempts || 0}${o.lastError ? ` &middot; Last error: ${escapeHtml(o.lastError)}` : ""}</div>
+    ${sections}
+  </div>
+</details>`;
+  }).join("\n");
+
+  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex, nofollow"/><title>Reading Log | Star Chart 13</title>
+<style>
+body{background:#0a0614;color:#e0ecff;font-family:system-ui,-apple-system,sans-serif;margin:0;padding:16px;}
+h1{font-size:18px;margin:0 0 4px;}
+.count{opacity:.6;font-size:12px;margin-bottom:16px;}
+.order{border:1px solid rgba(99,102,241,.3);border-radius:10px;margin-bottom:8px;background:rgba(99,102,241,.04);}
+.order summary{padding:10px 12px;cursor:pointer;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;list-style:none;}
+.order summary::-webkit-details-marker{display:none;}
+.od{opacity:.6;font-family:monospace;}
+.on{font-weight:700;}
+.oe{opacity:.75;word-break:break-all;}
+.op{color:#22D3EE;}
+.os{margin-left:auto;font-size:11px;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.08);}
+.status-fulfilled{color:#8dffb0;}
+.status-failed{color:#ff8f8f;}
+.order-body{padding:0 12px 14px;border-top:1px solid rgba(99,102,241,.2);}
+.meta{font-size:11px;opacity:.6;margin:10px 0;font-family:monospace;word-break:break-all;}
+.sec{margin-bottom:10px;}
+.sec-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#B026FF;margin-bottom:3px;}
+.sec-text{font-size:13px;line-height:1.6;white-space:pre-wrap;}
+</style></head><body>
+<h1>Reading Log</h1>
+<div class="count">${orders.length} order${orders.length === 1 ? "" : "s"} &middot; most recent first</div>
+${rows || "<p>No orders yet.</p>"}
+</body></html>`;
 }
 
 async function handleWebhook(request, env, ctx) {
@@ -330,7 +427,10 @@ async function processOrder(env, order) {
       filename: isMini ? "Lilith-and-Eve-Placement-Reading.pdf" : "Lilith-and-Eve-Astrology-Detailed-Reading.pdf",
     });
 
-    await setStatus(env, order, STATUS.FULFILLED, { lastError: null });
+    // Save the actual written reading onto the order record -- this is the only place
+    // that text ever existed outside the one-time email, so without this a completed
+    // order's "results" would be unrecoverable the moment it was sent.
+    await setStatus(env, order, STATUS.FULFILLED, { lastError: null, interpretation });
   } catch (err) {
     console.error("Order fulfillment failed", order.orderId, stripeSessionId, err.message);
     await setStatus(env, order, STATUS.FAILED, { lastError: err.message });

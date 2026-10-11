@@ -53,7 +53,12 @@ export async function getOrderIdBySession(env, sessionId) {
 
 export async function saveOrder(env, record) {
   record.updatedAt = new Date().toISOString();
-  await env.ORDERS.put(orderKey(record.orderId), JSON.stringify(record), { expirationTtl: ORDER_TTL_SECONDS });
+  // A completed sale is a business record, not a transient working file -- keep it
+  // permanently (no expirationTtl) instead of letting it vanish after 30 days like an
+  // abandoned or failed order. Everything still in flight keeps the 30-day TTL so junk
+  // from incomplete test carts doesn't accumulate forever.
+  const putOptions = record.status === STATUS.FULFILLED ? {} : { expirationTtl: ORDER_TTL_SECONDS };
+  await env.ORDERS.put(orderKey(record.orderId), JSON.stringify(record), putOptions);
   if (record.stripeSessionId) {
     await env.ORDERS.put(sessionKey(record.stripeSessionId), record.orderId, { expirationTtl: SESSION_INDEX_TTL_SECONDS });
   }
