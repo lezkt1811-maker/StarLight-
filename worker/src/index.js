@@ -68,6 +68,10 @@ export default {
       return handleAdminLog(url, env);
     }
 
+    if (url.pathname === "/admin/pdf" && request.method === "GET") {
+      return handleAdminPdf(url, env);
+    }
+
     return new Response("Not found", { status: 404 });
   },
 
@@ -206,9 +210,41 @@ async function handleAdminLog(url, env) {
   }
   orders.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
-  return new Response(renderAdminLogHtml(orders), {
+  return new Response(renderAdminLogHtml(orders, token), {
     status: 200,
     headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+
+/* Rebuilds a PDF on demand from an order's stored payload + saved interpretation --
+   the exact same builder functions used for the real email, so the content matches
+   what the customer received. Only works for orders fulfilled after the reading-log
+   feature shipped (that's the first point "interpretation" started being saved). */
+async function handleAdminPdf(url, env) {
+  if (!env.ADMIN_TOKEN || !timingSafeEqual(url.searchParams.get("token") || "", env.ADMIN_TOKEN)) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  const orderId = url.searchParams.get("orderId");
+  if (!orderId) return new Response("orderId is required", { status: 400 });
+
+  const order = await getOrder(env, orderId);
+  if (!order) return new Response(`No order found for id ${orderId}`, { status: 404 });
+  if (!order.interpretation) {
+    return new Response(
+      "This order has no saved reading text to rebuild a PDF from -- it was fulfilled before the reading log started saving that, or it isn't fulfilled yet.",
+      { status: 404 }
+    );
+  }
+
+  const isMini = order.payload?.schema === "starchart13-mini-reading";
+  const pdfBytes = isMini
+    ? await buildMiniReadingPdf(order.payload, order.interpretation)
+    : await buildReadingPdf(order.payload, order.interpretation);
+  const filename = isMini ? "Lilith-and-Eve-Placement-Reading.pdf" : "Lilith-and-Eve-Astrology-Detailed-Reading.pdf";
+
+  return new Response(pdfBytes, {
+    status: 200,
+    headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${filename}"` },
   });
 }
 
@@ -216,12 +252,30 @@ function escapeHtml(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-function renderAdminLogHtml(orders) {
+function renderAdminLogHtml(orders, token) {
   const rows = orders.map((o) => {
     const c = o.payload?.customer || {};
+    const attr = o.payload?.attribution || {};
     const isMini = o.payload?.schema === "starchart13-mini-reading";
     const product = isMini ? "Mini Reading ($7)" : "Full Reading ($25)";
     const birth = [c.birthDate, c.birthTime24h, c.birthLocation].filter(Boolean).join(" · ");
+
+    const source = attr.adClickPlatform
+      || [attr.utmSource, attr.utmMedium].filter(Boolean).join(" / ")
+      || (attr.referrer ? (() => { try { return new URL(attr.referrer).hostname; } catch (e) { return attr.referrer; } })() : null)
+      || "Direct / unknown";
+    const sourceDetail = [attr.utmCampaign ? `campaign: ${attr.utmCampaign}` : null, attr.landingPage ? `landed on: ${attr.landingPage}` : null]
+      .filter(Boolean).join(" · ");
+
+    const wheelImg = o.payload?.wheelImagePNG
+      ? `<div class="sec"><div class="sec-label">Chart Image</div><img class="wheel-thumb" src="${escapeHtml(o.payload.wheelImagePNG)}" alt="Natal wheel"/></div>`
+      : "";
+
+    const points = Array.isArray(o.payload?.points) && o.payload.points.length
+      ? `<div class="sec"><div class="sec-label">Placements</div><table class="pts"><tr><th>Point</th><th>True-Sky</th><th>House</th><th>Tropical</th></tr>${o.payload.points.map((p) =>
+          `<tr><td>${escapeHtml(p.name)}${p.retrograde ? " R" : ""}</td><td>${escapeHtml(p.trueSky?.constellation)} ${Math.floor(p.trueSky?.degree || 0)}°</td><td>${escapeHtml(p.house)}</td><td>${escapeHtml(p.tropical?.sign)} ${Math.floor(p.tropical?.degree || 0)}°</td></tr>`
+        ).join("")}</table></div>`
+      : "";
 
     const sections = o.interpretation
       ? Object.entries(o.interpretation)
@@ -231,6 +285,10 @@ function renderAdminLogHtml(orders) {
           )
           .join("")
       : `<div class="sec-text" style="opacity:.6;">No saved reading text for this order (sent before this log existed, or not yet fulfilled).</div>`;
+
+    const pdfLink = o.interpretation
+      ? `<a class="pdf-link" href="/admin/pdf?orderId=${encodeURIComponent(o.orderId)}&token=${encodeURIComponent(token)}" target="_blank" rel="noopener">View/Download PDF</a>`
+      : "";
 
     return `<details class="order">
   <summary>
@@ -242,6 +300,10 @@ function renderAdminLogHtml(orders) {
   </summary>
   <div class="order-body">
     <div class="meta">Order ${escapeHtml(o.orderId)} &middot; Birth: ${escapeHtml(birth) || "—"} &middot; Attempts: ${o.attempts || 0}${o.lastError ? ` &middot; Last error: ${escapeHtml(o.lastError)}` : ""}</div>
+    <div class="sec"><div class="sec-label">Came From</div><div class="sec-text">${escapeHtml(source)}${sourceDetail ? `<br><span style="opacity:.6;font-size:11px;">${escapeHtml(sourceDetail)}</span>` : ""}</div></div>
+    ${pdfLink}
+    ${wheelImg}
+    ${points}
     ${sections}
   </div>
 </details>`;
@@ -267,6 +329,11 @@ h1{font-size:18px;margin:0 0 4px;}
 .sec{margin-bottom:10px;}
 .sec-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#B026FF;margin-bottom:3px;}
 .sec-text{font-size:13px;line-height:1.6;white-space:pre-wrap;}
+.wheel-thumb{max-width:260px;width:100%;border-radius:8px;border:1px solid rgba(99,102,241,.3);display:block;}
+.pts{width:100%;border-collapse:collapse;font-size:12px;}
+.pts th{text-align:left;color:#22D3EE;font-weight:700;padding:3px 6px;border-bottom:1px solid rgba(99,102,241,.3);}
+.pts td{padding:3px 6px;border-bottom:1px solid rgba(99,102,241,.1);}
+.pdf-link{display:inline-block;margin:4px 0 10px;padding:8px 14px;border-radius:8px;border:1px solid rgba(34,211,238,.5);color:#22D3EE;text-decoration:none;font-size:12px;font-weight:700;}
 </style></head><body>
 <h1>Reading Log</h1>
 <div class="count">${orders.length} order${orders.length === 1 ? "" : "s"} &middot; most recent first</div>
