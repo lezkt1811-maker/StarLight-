@@ -3,11 +3,16 @@ import { deriveChartFacts, describeOccupants, describeStelliums } from "./facts.
 
 const PAGE_SIZE = [612, 792]; // US Letter
 const MARGIN = 54;
-const ACCENT = rgb(0.29, 0.09, 0.45); // deep violet — matches the site's purple/pink brand palette
-const MAGENTA = rgb(0.76, 0.1, 0.65); // secondary accent — matches the site's magenta
-const INK = rgb(0.12, 0.12, 0.14);
-const MUTED = rgb(0.4, 0.4, 0.42);
-const RULE_LIGHT = rgb(0.85, 0.8, 0.88);
+// Dark purple page, not white-with-black-text -- matches the live site's own
+// cosmic dark theme (body background #070B14, violet/magenta gradient accents)
+// instead of reading like a plain printout.
+const PAGE_BG = rgb(0.153, 0.067, 0.267); // deep purple (~#271144)
+const BOX_BG = rgb(0.212, 0.098, 0.349); // lighter purple panel fill for the cover info box
+const ACCENT = rgb(0.69, 0.149, 1.0); // bright violet (site brand #B026FF) — heading/title text
+const MAGENTA = rgb(1.0, 0.18, 0.82); // vivid pink (site brand #FF2ED1) — rules, underlines, top band
+const INK = rgb(0.97, 0.97, 0.99); // near-white body text
+const MUTED = rgb(0.74, 0.7, 0.86); // light lavender for secondary/table text
+const RULE_LIGHT = rgb(0.5, 0.32, 0.68); // mid-violet border, visible against the dark page/box fill
 
 class Cursor {
   constructor(doc, font, boldFont) {
@@ -21,7 +26,14 @@ class Cursor {
   newPage() {
     this.page = this.doc.addPage(PAGE_SIZE);
     this.y = PAGE_SIZE[1] - MARGIN;
+    this.drawPageBackground();
     this.drawTopBand();
+  }
+  /* Every new page is blank white by default in pdf-lib regardless of what the
+     rest of the document looks like, so the dark purple theme has to be painted
+     fresh on each page before any other content is drawn on it. */
+  drawPageBackground() {
+    this.page.drawRectangle({ x: 0, y: 0, width: PAGE_SIZE[0], height: PAGE_SIZE[1], color: PAGE_BG });
   }
   /* A thin two-tone brand bar across the top of every page -- the one piece of
      consistent visual identity that was previously completely absent; the rest
@@ -140,44 +152,73 @@ export async function buildReadingPdf(payload, interpretation) {
   cursor.spacer(4);
   cursor.sectionText(sections.house13Section);
 
+  // Every planet and point below gets its own heading and its own section --
+  // never two points folded into one paragraph the way "Core Self: Sun &
+  // Ascendant" or "Outer Planets: Uranus, Neptune & Pluto" used to.
   cursor.newPage();
-  cursor.heading("Core Self: Sun & Ascendant", 14, { kicker: "SECTION 4" });
-  cursor.sectionText(sections.coreSelf);
-  cursor.heading("Emotional Nature: The Moon", 14, { kicker: "SECTION 5" });
-  cursor.sectionText(sections.emotionalNature);
-  cursor.heading("Mind & Communication: Mercury", 14, { kicker: "SECTION 6" });
-  cursor.sectionText(sections.mindCommunication);
+  cursor.heading("Sun", 14, { kicker: "SECTION 4" });
+  cursor.sectionText(sections.sunSection);
+  cursor.heading("Ascendant", 14, { kicker: "SECTION 5" });
+  cursor.sectionText(sections.ascendantSection);
+  cursor.heading("Moon", 14, { kicker: "SECTION 6" });
+  cursor.sectionText(sections.moonSection);
+
+  cursor.newPage();
+  cursor.heading("Mercury", 14, { kicker: "SECTION 7" });
+  cursor.sectionText(sections.mercurySection);
+  cursor.heading("Venus", 14, { kicker: "SECTION 8" });
+  cursor.sectionText(sections.venusSection);
+  cursor.heading("Mars", 14, { kicker: "SECTION 9" });
+  cursor.sectionText(sections.marsSection);
 
   drawPlacementsTable(cursor, payload);
 
   cursor.newPage();
-  cursor.heading("Love, Desire & Relationships: Venus & Mars", 14, { kicker: "SECTION 7" });
-  cursor.sectionText(sections.loveRelationships);
-  cursor.heading("Purpose, Growth & Direction: Jupiter, Saturn & the Nodes", 14, { kicker: "SECTION 8" });
-  cursor.sectionText(sections.purposeGrowth);
-  cursor.heading("Outer Planets: Uranus, Neptune & Pluto", 14, { kicker: "SECTION 9" });
-  cursor.sectionText(sections.outerPlanets);
+  cursor.heading("Jupiter", 14, { kicker: "SECTION 10" });
+  cursor.sectionText(sections.jupiterSection);
+  cursor.heading("Saturn", 14, { kicker: "SECTION 11" });
+  cursor.sectionText(sections.saturnSection);
 
   cursor.newPage();
-  cursor.heading("Lilith and Eve Axis", 14, { kicker: "SECTION 10" });
+  cursor.heading("North Node", 14, { kicker: "SECTION 12" });
+  cursor.sectionText(sections.northNodeSection);
+  cursor.heading("South Node", 14, { kicker: "SECTION 13" });
+  cursor.sectionText(sections.southNodeSection);
+  cursor.heading("Midheaven", 14, { kicker: "SECTION 14" });
+  cursor.sectionText(sections.midheavenSection);
+
+  cursor.newPage();
+  cursor.heading("Uranus", 14, { kicker: "SECTION 15" });
+  cursor.sectionText(sections.uranusSection);
+  cursor.heading("Neptune", 14, { kicker: "SECTION 16" });
+  cursor.sectionText(sections.neptuneSection);
+  cursor.heading("Pluto", 14, { kicker: "SECTION 17" });
+  cursor.sectionText(sections.plutoSection);
+
+  cursor.newPage();
+  cursor.heading("Chiron", 14, { kicker: "SECTION 18" });
+  cursor.sectionText(sections.chironSection);
+
+  cursor.newPage();
+  cursor.heading("Lilith and Eve Axis", 14, { kicker: "SECTION 19" });
   cursor.sectionText(sections.lilithEveAxis);
 
-  cursor.heading("All 13 Houses", 14, { kicker: "SECTION 11" });
+  cursor.heading("All 13 Houses", 14, { kicker: "SECTION 20" });
   cursor.sectionText(sections.allHousesNarrative);
   drawAllHousesTable(cursor, facts);
 
   cursor.newPage();
-  cursor.heading("Major Aspect Patterns", 14, { kicker: "SECTION 12" });
+  cursor.heading("Major Aspect Patterns", 14, { kicker: "SECTION 21" });
   cursor.sectionText(sections.aspectPatterns);
   drawAspectsTable(cursor, payload);
 
   cursor.newPage();
-  cursor.heading("Tropical vs. True Sky", 14, { kicker: "SECTION 13" });
+  cursor.heading("Tropical vs. True Sky", 14, { kicker: "SECTION 22" });
   cursor.sectionText(sections.tropicalDifferential);
   drawTropicalComparisonTable(cursor, payload);
 
   cursor.newPage();
-  cursor.heading("Integrated Synthesis", 14, { kicker: "SECTION 14" });
+  cursor.heading("Integrated Synthesis", 14, { kicker: "SECTION 23" });
   cursor.sectionText(sections.integratedSynthesis);
 
   drawDisclaimer(cursor);
@@ -307,7 +348,7 @@ function drawCoverInfoBox(cursor, payload) {
     height: boxHeight,
     borderColor: RULE_LIGHT,
     borderWidth: 1,
-    color: rgb(0.97, 0.96, 0.98),
+    color: BOX_BG,
   });
   page.drawRectangle({ x: MARGIN, y: boxTop - boxHeight, width: 4, height: boxHeight, color: MAGENTA });
   let y = boxTop - 20;
@@ -418,12 +459,21 @@ function fallbackSections(payload, facts) {
       ? `Ophiuchus placements: ${describeOccupants(facts.ophiuchusPlacements)}.` + note
       : "None of your calculated placements fall within Ophiuchus in this chart.",
     house13Section: `13th house occupants: ${describeOccupants(facts.house13Occupants)}.` + note,
-    coreSelf: note.trim(),
-    emotionalNature: note.trim(),
-    mindCommunication: note.trim(),
-    loveRelationships: note.trim(),
-    purposeGrowth: note.trim(),
-    outerPlanets: note.trim(),
+    sunSection: note.trim(),
+    ascendantSection: note.trim(),
+    moonSection: note.trim(),
+    mercurySection: note.trim(),
+    venusSection: note.trim(),
+    marsSection: note.trim(),
+    jupiterSection: note.trim(),
+    saturnSection: note.trim(),
+    northNodeSection: note.trim(),
+    southNodeSection: note.trim(),
+    midheavenSection: note.trim(),
+    uranusSection: note.trim(),
+    neptuneSection: note.trim(),
+    plutoSection: note.trim(),
+    chironSection: note.trim(),
     lilithEveAxis: facts.hasLilithOrEve ? note.trim() : "Lilith and Eve were not calculated for this chart.",
     allHousesNarrative: note.trim(),
     aspectPatterns: note.trim(),

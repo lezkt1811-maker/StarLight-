@@ -26,16 +26,29 @@ function requireAnthropicKey(env) {
 /* Every section the AI is asked to write. "ophiuchusSection" is added to the
    schema dynamically (see below) — when the chart has no Ophiuchus placement
    we never ask the AI to write about it at all, and use a fixed, honest
-   fallback instead. That's a code-level guarantee, not a prompt request. */
+   fallback instead. That's a code-level guarantee, not a prompt request.
+   Every planet/point gets its own dedicated field rather than being grouped
+   with others (e.g. Sun and Ascendant used to share one "coreSelf" field) —
+   each one covers that single point's constellation placement AND what its
+   house means for this chart, never two points folded into one paragraph. */
 const BASE_SECTION_FIELDS = [
   "chartGlance",
   "house13Section",
-  "coreSelf",
-  "emotionalNature",
-  "mindCommunication",
-  "loveRelationships",
-  "purposeGrowth",
-  "outerPlanets",
+  "sunSection",
+  "ascendantSection",
+  "moonSection",
+  "mercurySection",
+  "venusSection",
+  "marsSection",
+  "jupiterSection",
+  "saturnSection",
+  "northNodeSection",
+  "southNodeSection",
+  "midheavenSection",
+  "uranusSection",
+  "neptuneSection",
+  "plutoSection",
+  "chironSection",
   "lilithEveAxis",
   "allHousesNarrative",
   "aspectPatterns",
@@ -58,12 +71,15 @@ export async function generateInterpretation(env, payload) {
 
   const body = {
     model,
-    // 13 substantial prose sections need real headroom -- 6000 was cutting the
-    // response off mid-way (confirmed: both retry attempts failed on the exact same
-    // field, allHousesNarrative, the 10th of 13 required fields -- a deterministic
-    // truncation, not a flaky one). Anthropic's own guidance for a non-streaming
-    // request like this one is to default to ~16000 rather than lowball it.
-    max_tokens: 16000,
+    // Splitting the old grouped sections (e.g. "coreSelf" covering Sun+Ascendant)
+    // into one field per planet/point roughly doubled the field count (13 -> 22+),
+    // so the budget that used to cover 13 longer sections now needs to cover more,
+    // shorter ones. 16000 previously replaced a 6000 budget that was cutting the
+    // response off mid-way; bumping again rather than risking the same truncation
+    // with twice as many required fields. Anthropic's own guidance for a
+    // non-streaming request like this one is to default generously rather than
+    // lowball it.
+    max_tokens: 20000,
     messages: [
       {
         role: "user",
@@ -203,30 +219,41 @@ function buildPrompt(payload, facts, sectionFields) {
       "never a placement not listed above, and never assume a traditional 12-house chart. Clearly distinguish " +
       "Star Chart 13's interpretive framework from established astronomical fact where relevant (e.g. Ophiuchus's " +
       "existence as a constellation the ecliptic passes through is astronomy; what it means for someone is " +
-      "interpretation). Avoid disclaimers, hedging, or repeating the same paragraph across sections. Write as a " +
-      "confident, experienced astrologer. Within each section, write 2-4 shorter paragraphs instead of one long " +
-      "block — separate them with a blank line (two newlines). This is a formatting instruction only; it doesn't " +
-      "change what you say, just how it's broken up for readability."
+      "interpretation). Avoid disclaimers, hedging, or repeating the same paragraph across sections — each planet " +
+      "or point gets its own section below and must stand on its own, never folded into another point's section. " +
+      "Write as a confident, experienced astrologer. Separate paragraphs within a field with a blank line (two " +
+      "newlines). This is a formatting instruction only; it doesn't change what you say, just how it's broken up " +
+      "for readability. Default to 1-2 focused paragraphs for a single-planet/point section and 2-4 for the " +
+      "broader overview sections noted below — longer than that per point is padding, not depth."
   );
   lines.push("");
   lines.push(`Call the ${TOOL_NAME} tool now with exactly these fields: ${sectionFields.join(", ")}. Do not respond in plain text — submit your answer only as a call to this tool.`);
   lines.push("Field guide:");
-  lines.push("- chartGlance: concise chart summary — Ascendant, Sun, Moon, and the most significant placements. If any stelliums are listed above, name them explicitly here (which points, which house or sign, and what that concentration of energy means) — never invent one if none is listed.");
+  lines.push("- chartGlance (2-4 paragraphs): concise chart summary — Ascendant, Sun, Moon, and the most significant placements. If any stelliums are listed above, name them explicitly here (which points, which house or sign, and what that concentration of energy means) — never invent one if none is listed.");
   if (sectionFields.includes("ophiuchusSection")) {
     lines.push("- ophiuchusSection: discuss the listed Ophiuchus placement(s) prominently, by exact planet/point and house.");
   }
-  lines.push("- house13Section: dedicated section on the 13th house — its sign/area, occupants (or lack of them), and what that means in the Star Chart 13 framework. Never collapse this into a 12-house chart.");
-  lines.push("- coreSelf: Sun, Ascendant, and how the identity placements relate.");
-  lines.push("- emotionalNature: Moon, its house, and its aspects.");
-  lines.push("- mindCommunication: Mercury — sign, house, major aspects.");
-  lines.push("- loveRelationships: Venus and Mars, their houses and major aspects.");
-  lines.push("- purposeGrowth: Jupiter, Saturn, Midheaven, and the Nodes.");
-  lines.push("- outerPlanets: Uranus, Neptune, Pluto — personalized by house/aspect, not generic generational text.");
-  lines.push("- lilithEveAxis: this is a signature section customers specifically pay for — write a longer, more in-depth exploration than the other sections (aim for 4-6 paragraphs instead of 2-4), covering Black Moon Lilith's placement, Eve's placement, and how the polarity between them plays out in this specific chart, using only the facts given above.");
-  lines.push("- allHousesNarrative: a flowing overview of all 13 houses, prioritizing occupied/emphasized ones — you may reference the full per-house list, which is also rendered as a table in the PDF.");
-  lines.push("- aspectPatterns: group and explain the major aspect patterns rather than listing them.");
-  lines.push("- tropicalDifferential: concise — the most meaningful tropical vs. true-sky differences, framed with true-sky as primary.");
-  lines.push("- integratedSynthesis: a coherent closing synthesis connecting the major patterns — do not repeat earlier paragraphs.");
+  lines.push("- house13Section (2-4 paragraphs): dedicated section on the 13th house — its sign/area, occupants (or lack of them), and what that means in the Star Chart 13 framework. Never collapse this into a 12-house chart.");
+  lines.push("- sunSection: the Sun's true-sky constellation placement and what living through ITS house means for this person's core identity. Sun only — do not discuss the Ascendant here.");
+  lines.push("- ascendantSection: the Ascendant's true-sky constellation and what it means for this person's outward expression and first impression. Ascendant only — do not repeat the Sun section.");
+  lines.push("- moonSection: the Moon's constellation, its house, and its major aspects — emotional nature.");
+  lines.push("- mercurySection: Mercury's constellation, its house, and its major aspects — mind and communication style.");
+  lines.push("- venusSection: Venus's constellation and house — love, values, and attraction. Venus only — do not discuss Mars here.");
+  lines.push("- marsSection: Mars's constellation and house — drive, assertion, and desire. Mars only — do not repeat the Venus section.");
+  lines.push("- jupiterSection: Jupiter's constellation and house — growth, luck, and expansion. Jupiter only.");
+  lines.push("- saturnSection: Saturn's constellation and house — discipline, responsibility, and lessons. Saturn only — do not repeat the Jupiter section.");
+  lines.push("- northNodeSection: the North Node's constellation and house — the growth direction this person is being pulled toward.");
+  lines.push("- southNodeSection: the South Node's constellation and house — the innate pattern or comfort zone this person is moving away from. Do not just restate the North Node section as its opposite; give it its own grounded description.");
+  lines.push("- midheavenSection: the Midheaven's constellation — public reputation, career direction, and the role this person is built to be seen in.");
+  lines.push("- uranusSection: Uranus personalized by this chart's specific house and aspects — not generic generational text. Uranus only.");
+  lines.push("- neptuneSection: Neptune personalized by this chart's specific house and aspects — dreams, intuition, illusion. Neptune only — do not repeat the Uranus section.");
+  lines.push("- plutoSection: Pluto personalized by this chart's specific house and aspects — transformation and power. Pluto only — do not repeat the Uranus or Neptune sections.");
+  lines.push("- chironSection: Chiron's constellation and house — the \"wounded healer\" placement: the core wound this points to and the gift that comes from working with it.");
+  lines.push("- lilithEveAxis (4-6 paragraphs): this is a signature section customers specifically pay for — write a longer, more in-depth exploration than the other sections, covering Black Moon Lilith's placement, Eve's placement, and how the polarity between them plays out in this specific chart, using only the facts given above.");
+  lines.push("- allHousesNarrative (2-4 paragraphs): a flowing overview of all 13 houses, prioritizing occupied/emphasized ones — you may reference the full per-house list, which is also rendered as a table in the PDF.");
+  lines.push("- aspectPatterns (2-4 paragraphs): group and explain the major aspect patterns rather than listing them.");
+  lines.push("- tropicalDifferential (2-4 paragraphs): concise — the most meaningful tropical vs. true-sky differences, framed with true-sky as primary.");
+  lines.push("- integratedSynthesis (2-4 paragraphs): a coherent closing synthesis connecting the major patterns across every section above — do not repeat earlier paragraphs.");
   return lines.join("\n");
 }
 
