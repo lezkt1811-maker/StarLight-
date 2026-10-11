@@ -1,4 +1,4 @@
-import { deriveChartFacts, describeOccupants } from "./facts.js";
+import { deriveChartFacts, describeOccupants, describeStelliums } from "./facts.js";
 import { fetchWithTimeout } from "./http.js";
 
 const TOOL_NAME = "write_reading_sections";
@@ -190,6 +190,7 @@ function buildPrompt(payload, facts, sectionFields) {
     lines.push(`- ${aspectName}: ${list}`);
   });
   lines.push("");
+  lines.push(`Stelliums (3+ points sharing a house or true-sky sign): ${describeStelliums(facts.stelliums)}`);
   lines.push(`Placements that changed sign between tropical and true sky (${facts.changedSignPlacements.length}):`);
   facts.changedSignPlacements.forEach((c) => {
     lines.push(`- ${c.point}: Tropical ${c.tropicalSign} -> True Sky ${c.trueSkyConstellation}`);
@@ -210,7 +211,7 @@ function buildPrompt(payload, facts, sectionFields) {
   lines.push("");
   lines.push(`Call the ${TOOL_NAME} tool now with exactly these fields: ${sectionFields.join(", ")}. Do not respond in plain text — submit your answer only as a call to this tool.`);
   lines.push("Field guide:");
-  lines.push("- chartGlance: concise chart summary — Ascendant, Sun, Moon, and the most significant placements.");
+  lines.push("- chartGlance: concise chart summary — Ascendant, Sun, Moon, and the most significant placements. If any stelliums are listed above, name them explicitly here (which points, which house or sign, and what that concentration of energy means) — never invent one if none is listed.");
   if (sectionFields.includes("ophiuchusSection")) {
     lines.push("- ophiuchusSection: discuss the listed Ophiuchus placement(s) prominently, by exact planet/point and house.");
   }
@@ -221,7 +222,7 @@ function buildPrompt(payload, facts, sectionFields) {
   lines.push("- loveRelationships: Venus and Mars, their houses and major aspects.");
   lines.push("- purposeGrowth: Jupiter, Saturn, Midheaven, and the Nodes.");
   lines.push("- outerPlanets: Uranus, Neptune, Pluto — personalized by house/aspect, not generic generational text.");
-  lines.push("- lilithEveAxis: interpret the Lilith/Eve axis using only the facts given above.");
+  lines.push("- lilithEveAxis: this is a signature section customers specifically pay for — write a longer, more in-depth exploration than the other sections (aim for 4-6 paragraphs instead of 2-4), covering Black Moon Lilith's placement, Eve's placement, and how the polarity between them plays out in this specific chart, using only the facts given above.");
   lines.push("- allHousesNarrative: a flowing overview of all 13 houses, prioritizing occupied/emphasized ones — you may reference the full per-house list, which is also rendered as a table in the PDF.");
   lines.push("- aspectPatterns: group and explain the major aspect patterns rather than listing them.");
   lines.push("- tropicalDifferential: concise — the most meaningful tropical vs. true-sky differences, framed with true-sky as primary.");
