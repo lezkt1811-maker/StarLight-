@@ -1,11 +1,13 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { deriveChartFacts, describeOccupants } from "./facts.js";
+import { deriveChartFacts, describeOccupants, describeStelliums } from "./facts.js";
 
 const PAGE_SIZE = [612, 792]; // US Letter
 const MARGIN = 54;
 const ACCENT = rgb(0.29, 0.09, 0.45); // deep violet — matches the site's purple/pink brand palette
+const MAGENTA = rgb(0.76, 0.1, 0.65); // secondary accent — matches the site's magenta
 const INK = rgb(0.12, 0.12, 0.14);
 const MUTED = rgb(0.4, 0.4, 0.42);
+const RULE_LIGHT = rgb(0.85, 0.8, 0.88);
 
 class Cursor {
   constructor(doc, font, boldFont) {
@@ -19,18 +21,31 @@ class Cursor {
   newPage() {
     this.page = this.doc.addPage(PAGE_SIZE);
     this.y = PAGE_SIZE[1] - MARGIN;
+    this.drawTopBand();
+  }
+  /* A thin two-tone brand bar across the top of every page -- the one piece of
+     consistent visual identity that was previously completely absent; the rest
+     of the page was plain white with no color except headings and the cover. */
+  drawTopBand() {
+    const bandHeight = 7;
+    const y = PAGE_SIZE[1] - bandHeight;
+    const half = PAGE_SIZE[0] / 2;
+    this.page.drawRectangle({ x: 0, y, width: half, height: bandHeight, color: ACCENT });
+    this.page.drawRectangle({ x: half, y, width: half, height: bandHeight, color: MAGENTA });
   }
   ensureSpace(height) {
     if (this.y - height < MARGIN) this.newPage();
   }
   heading(text, size = 14, opts = {}) {
-    this.ensureSpace(size + 18);
+    this.ensureSpace(size + 22);
     if (opts.kicker) {
       this.page.drawText(opts.kicker, { x: MARGIN, y: this.y, size: 9, font: this.boldFont, color: MUTED });
       this.y -= 12;
     }
     this.page.drawText(text, { x: MARGIN, y: this.y, size, font: this.boldFont, color: ACCENT });
-    this.y -= size + 12;
+    this.y -= size + 6;
+    this.page.drawLine({ start: { x: MARGIN, y: this.y }, end: { x: MARGIN + 46, y: this.y }, thickness: 2, color: MAGENTA });
+    this.y -= 12;
   }
   paragraph(text, size = 10.5, lineHeight = 15) {
     const maxWidth = PAGE_SIZE[0] - MARGIN * 2;
@@ -111,6 +126,10 @@ export async function buildReadingPdf(payload, interpretation) {
   cursor.newPage();
   cursor.heading("Your True-Sky Chart at a Glance", 15, { kicker: "SECTION 1" });
   cursor.sectionText(sections.chartGlance);
+  if (facts.hasStelliums) {
+    cursor.spacer(4);
+    cursor.paragraph(`Stelliums detected: ${describeStelliums(facts.stelliums)}`, 9.5, 13);
+  }
 
   cursor.newPage();
   cursor.heading("Ophiuchus: The Hidden Thirteenth Sign", 15, { kicker: "SECTION 2" });
@@ -122,21 +141,21 @@ export async function buildReadingPdf(payload, interpretation) {
   cursor.sectionText(sections.house13Section);
 
   cursor.newPage();
-  cursor.heading("Core Self", 14, { kicker: "SECTION 4" });
+  cursor.heading("Core Self: Sun & Ascendant", 14, { kicker: "SECTION 4" });
   cursor.sectionText(sections.coreSelf);
-  cursor.heading("Emotional Nature", 14, { kicker: "SECTION 5" });
+  cursor.heading("Emotional Nature: The Moon", 14, { kicker: "SECTION 5" });
   cursor.sectionText(sections.emotionalNature);
-  cursor.heading("Mind & Communication", 14, { kicker: "SECTION 6" });
+  cursor.heading("Mind & Communication: Mercury", 14, { kicker: "SECTION 6" });
   cursor.sectionText(sections.mindCommunication);
 
   drawPlacementsTable(cursor, payload);
 
   cursor.newPage();
-  cursor.heading("Love, Desire & Relationships", 14, { kicker: "SECTION 7" });
+  cursor.heading("Love, Desire & Relationships: Venus & Mars", 14, { kicker: "SECTION 7" });
   cursor.sectionText(sections.loveRelationships);
-  cursor.heading("Purpose, Growth & Direction", 14, { kicker: "SECTION 8" });
+  cursor.heading("Purpose, Growth & Direction: Jupiter, Saturn & the Nodes", 14, { kicker: "SECTION 8" });
   cursor.sectionText(sections.purposeGrowth);
-  cursor.heading("Outer Planets", 14, { kicker: "SECTION 9" });
+  cursor.heading("Outer Planets: Uranus, Neptune & Pluto", 14, { kicker: "SECTION 9" });
   cursor.sectionText(sections.outerPlanets);
 
   cursor.newPage();
@@ -217,26 +236,15 @@ function drawMiniCover(cursor, payload) {
   const { page } = cursor;
   cursor.y = PAGE_SIZE[1] - 220;
   page.drawText("Star Chart 13", { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: ACCENT });
-  cursor.y -= 34;
+  cursor.y -= 10;
+  page.drawLine({ start: { x: MARGIN, y: cursor.y }, end: { x: MARGIN + 70, y: cursor.y }, thickness: 2.5, color: MAGENTA });
+  cursor.y -= 24;
   page.drawText("Lilith & Eve Placement Reading", { x: MARGIN, y: cursor.y, size: 15, font: cursor.font, color: INK });
   cursor.y -= 22;
   page.drawText("Black Moon Lilith • Eve • The Axis Between Them", { x: MARGIN, y: cursor.y, size: 10, font: cursor.font, color: MUTED });
-  cursor.y -= 44;
+  cursor.y -= 40;
 
-  const c = payload.customer || {};
-  const lines = [
-    c.name ? `Prepared for: ${c.name}` : null,
-    c.birthDate ? `Birth date: ${c.birthDate}` : null,
-    c.birthTime24h ? `Birth time: ${c.birthTime24h}` : null,
-    c.birthLocation ? `Birth location: ${c.birthLocation}` : null,
-  ].filter(Boolean);
-  lines.forEach((l) => {
-    page.drawText(l, { x: MARGIN, y: cursor.y, size: 12, font: cursor.font, color: INK });
-    cursor.y -= 20;
-  });
-
-  cursor.y -= 10;
-  page.drawText(`Generated: ${new Date().toISOString().slice(0, 10)}`, { x: MARGIN, y: cursor.y, size: 9, font: cursor.font, color: MUTED });
+  drawCoverInfoBox(cursor, payload);
 }
 
 function fallbackMiniSections(facts) {
@@ -260,12 +268,28 @@ function drawCover(cursor, payload) {
   const { page } = cursor;
   cursor.y = PAGE_SIZE[1] - 220;
   page.drawText("Star Chart 13", { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: ACCENT });
-  cursor.y -= 34;
+  cursor.y -= 10;
+  page.drawLine({ start: { x: MARGIN, y: cursor.y }, end: { x: MARGIN + 70, y: cursor.y }, thickness: 2.5, color: MAGENTA });
+  cursor.y -= 24;
   page.drawText("Detailed True-Sky Natal Reading", { x: MARGIN, y: cursor.y, size: 15, font: cursor.font, color: INK });
   cursor.y -= 22;
   page.drawText("13 Signs • 13 Houses • Ophiuchus Included", { x: MARGIN, y: cursor.y, size: 10, font: cursor.font, color: MUTED });
-  cursor.y -= 44;
+  cursor.y -= 40;
 
+  drawCoverInfoBox(cursor, payload);
+
+  cursor.y -= 20;
+  page.drawText(
+    "Your 13 signs, all 13 houses, major aspects, and your tropical vs. true-sky differential.",
+    { x: MARGIN, y: cursor.y, size: 10, font: cursor.font, color: MUTED }
+  );
+}
+
+/* A bordered info box for the customer's birth details, instead of plain stacked
+   text lines -- gives the cover page some actual visual structure rather than
+   reading as a plain white page with a title and a list. */
+function drawCoverInfoBox(cursor, payload) {
+  const { page } = cursor;
   const c = payload.customer || {};
   const lines = [
     c.name ? `Prepared for: ${c.name}` : null,
@@ -273,18 +297,26 @@ function drawCover(cursor, payload) {
     c.birthTime24h ? `Birth time: ${c.birthTime24h}` : null,
     c.birthLocation ? `Birth location: ${c.birthLocation}` : null,
   ].filter(Boolean);
-  lines.forEach((l) => {
-    page.drawText(l, { x: MARGIN, y: cursor.y, size: 12, font: cursor.font, color: INK });
-    cursor.y -= 20;
+  const boxWidth = PAGE_SIZE[0] - MARGIN * 2;
+  const boxHeight = lines.length * 20 + 24;
+  const boxTop = cursor.y;
+  page.drawRectangle({
+    x: MARGIN,
+    y: boxTop - boxHeight,
+    width: boxWidth,
+    height: boxHeight,
+    borderColor: RULE_LIGHT,
+    borderWidth: 1,
+    color: rgb(0.97, 0.96, 0.98),
   });
-
-  cursor.y -= 10;
+  page.drawRectangle({ x: MARGIN, y: boxTop - boxHeight, width: 4, height: boxHeight, color: MAGENTA });
+  let y = boxTop - 20;
+  lines.forEach((l) => {
+    page.drawText(l, { x: MARGIN + 18, y, size: 12, font: cursor.font, color: INK });
+    y -= 20;
+  });
+  cursor.y = boxTop - boxHeight - 14;
   page.drawText(`Generated: ${new Date().toISOString().slice(0, 10)}`, { x: MARGIN, y: cursor.y, size: 9, font: cursor.font, color: MUTED });
-  cursor.y -= 24;
-  page.drawText(
-    "Your 13 signs, all 13 houses, major aspects, and your tropical vs. true-sky differential.",
-    { x: MARGIN, y: cursor.y, size: 10, font: cursor.font, color: MUTED }
-  );
 }
 
 async function drawWheelImage(doc, cursor, payload) {

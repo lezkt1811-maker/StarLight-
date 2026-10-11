@@ -30,6 +30,8 @@ export function deriveChartFacts(payload) {
 
   const changedSignPlacements = (payload.tropicalComparison || []).filter((c) => c.changedSign);
 
+  const stelliums = findStelliums(points);
+
   return {
     ascendant: payload.calculation?.ascendant || null,
     midheaven: payload.calculation?.midheaven || null,
@@ -44,7 +46,42 @@ export function deriveChartFacts(payload) {
     evePoint: evePoint || null,
     aspectGroups,
     changedSignPlacements,
+    stelliums,
+    hasStelliums: stelliums.length > 0,
   };
+}
+
+/* A stellium is 3+ points clustered together -- by house or by true-sky
+   constellation. Angles (Ascendant/MC/IC) are excluded since they aren't
+   "planets" in the traditional stellium sense; everything else (including
+   Lilith/Eve/Lots when present) counts. A point can appear in at most one
+   house-group and one constellation-group, never duplicated within either. */
+function findStelliums(points) {
+  const ANGLES = ["Ascendant", "MC", "IC"];
+  const candidates = points.filter((p) => !ANGLES.includes(p.key));
+
+  function groupBy(list, keyFn) {
+    const map = {};
+    list.forEach((p) => {
+      const k = keyFn(p);
+      if (k == null || k === "") return;
+      (map[k] = map[k] || []).push(p);
+    });
+    return map;
+  }
+
+  const byHouse = groupBy(candidates, (p) => p.house);
+  const byConstellation = groupBy(candidates, (p) => p.trueSky?.constellation);
+
+  const houseStelliums = Object.entries(byHouse)
+    .filter(([, list]) => list.length >= 3)
+    .map(([house, list]) => ({ type: "house", location: `House ${house}`, points: list }));
+
+  const constellationStelliums = Object.entries(byConstellation)
+    .filter(([, list]) => list.length >= 3)
+    .map(([constellation, list]) => ({ type: "constellation", location: constellation, points: list }));
+
+  return [...houseStelliums, ...constellationStelliums];
 }
 
 export function describeOccupants(occupants) {
@@ -52,4 +89,11 @@ export function describeOccupants(occupants) {
   return occupants
     .map((p) => `${p.name}${p.retrograde ? " (Rx)" : ""} in ${p.trueSky.constellation} ${Math.floor(p.trueSky.degree)}°`)
     .join(", ");
+}
+
+export function describeStelliums(stelliums) {
+  if (!stelliums || !stelliums.length) return "None";
+  return stelliums
+    .map((s) => `${s.location} (${s.type === "house" ? "same house" : "same true-sky sign"}): ${s.points.map((p) => p.name).join(", ")}`)
+    .join("; ");
 }
