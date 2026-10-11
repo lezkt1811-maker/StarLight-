@@ -72,6 +72,10 @@ export default {
       return handleAdminPdf(url, env);
     }
 
+    if (url.pathname === "/admin/create-paid-order" && request.method === "POST") {
+      return handleAdminCreatePaidOrder(request, env);
+    }
+
     return new Response("Not found", { status: 404 });
   },
 
@@ -105,6 +109,43 @@ async function handlePrepare(request, env) {
   const orderId = crypto.randomUUID();
   await createOrder(env, orderId, payload);
   return new Response(JSON.stringify({ orderId }), { status: 200, headers });
+}
+
+/* Admin-only counterpart to the real $25/$7 purchase flow, for making a customer whole
+   with a freshly regenerated reading (current chart styling, current AI prompt) without
+   charging them again -- e.g. a saved chart image from an old order looks outdated, and
+   a plain resend would just re-embed that same old image. Skips Stripe entirely: creates
+   the order from a payload the admin generated for real (same client-side chart engine
+   real customers use) and marks it PAID immediately, so the next sweep writes and emails
+   it exactly like a normal paid order. Bearer-token protected like every other /admin
+   route; never touches Stripe, never collects a payment. */
+async function handleAdminCreatePaidOrder(request, env) {
+  const headers = { "Content-Type": "application/json" };
+  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!env.ADMIN_TOKEN || !timingSafeEqual(token, env.ADMIN_TOKEN)) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers });
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch (e) {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers });
+  }
+
+  const { email, payload } = body || {};
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return new Response(JSON.stringify({ error: "A valid recipient email is required" }), { status: 400, headers });
+  }
+  if (!payload || !VALID_SCHEMAS.includes(payload.schema) || !Array.isArray(payload.points) || !payload.points.length) {
+    return new Response(JSON.stringify({ error: "Unrecognized or empty report payload — generate the chart first." }), { status: 400, headers });
+  }
+
+  const orderId = crypto.randomUUID();
+  const order = await createOrder(env, orderId, payload);
+  await setStatus(env, order, STATUS.PAID, { customerEmail: email });
+
+  return new Response(JSON.stringify({ ok: true, orderId }), { status: 200, headers });
 }
 
 /* A lightweight, privacy-safe status check the success page can poll using only the
