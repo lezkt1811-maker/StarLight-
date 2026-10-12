@@ -16,6 +16,79 @@ const MUTED = rgb(0.74, 0.7, 0.86); // light lavender for secondary/table text
 const RULE_LIGHT = rgb(0.5, 0.32, 0.68); // mid-violet border, visible against the dark page/box fill
 const GOLD_BRIGHT = rgb(1.0, 0.84, 0.25); // bright metallic gold — border stars/sparkles
 const GOLD_SOFT = rgb(0.86, 0.68, 0.32); // deeper champagne gold — border stars/sparkles, alternates with GOLD_BRIGHT
+const HIGHLIGHT = rgb(1.0, 0.82, 0.45); // warm gold — bolded in-text keywords, echoes the star border
+
+/* Chart terms worth bolding inline so a dense paragraph has scan anchors
+   instead of reading as one uniform block -- planets/points, signs, and
+   aspect names, longest phrase first so "Black Moon Lilith" matches whole
+   rather than just grabbing "Moon" out of the middle of it. Matching is
+   case-insensitive (the AI sometimes writes "house 6" lowercase inside a
+   sentence) and never touches the actual words, only how they're drawn. */
+const BOLD_TERMS = [
+  "Black Moon Lilith",
+  "North Node",
+  "South Node",
+  "Sun",
+  "Moon",
+  "Mercury",
+  "Venus",
+  "Mars",
+  "Jupiter",
+  "Saturn",
+  "Uranus",
+  "Neptune",
+  "Pluto",
+  "Chiron",
+  "Ascendant",
+  "Midheaven",
+  "Eve",
+  "Aries",
+  "Taurus",
+  "Gemini",
+  "Cancer",
+  "Leo",
+  "Virgo",
+  "Libra",
+  "Scorpio",
+  "Ophiuchus",
+  "Sagittarius",
+  "Capricorn",
+  "Aquarius",
+  "Pisces",
+  "Conjunction",
+  "Conjunct",
+  "Opposition",
+  "Trine",
+  "Sextile",
+  "Square",
+  "Quincunx",
+].sort((a, b) => b.length - a.length);
+const BOLD_TERM_REGEX = new RegExp(
+  `\\b(${BOLD_TERMS.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\b|\\bHouse\\s+\\d+\\b`,
+  "gi"
+);
+
+/* Splits text into {word, bold} tokens for word-by-word rendering with mixed
+   fonts on the same line -- a multi-word match (e.g. "Black Moon Lilith" or
+   "House 6") gets every one of its words tagged bold together. */
+function tokenizeRich(text) {
+  const str = String(text || "");
+  const tokens = [];
+  let lastIndex = 0;
+  for (const m of str.matchAll(BOLD_TERM_REGEX)) {
+    if (m.index > lastIndex) tokens.push(...splitWords(str.slice(lastIndex, m.index), false));
+    tokens.push(...splitWords(m[0], true));
+    lastIndex = m.index + m[0].length;
+  }
+  if (lastIndex < str.length) tokens.push(...splitWords(str.slice(lastIndex), false));
+  return tokens;
+}
+function splitWords(s, bold) {
+  return s
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => ({ word, bold }));
+}
 
 /* A 5-point star and a 4-point glitter sparkle, both centered on (0,0) at a
    fixed base size -- scaled per-instance via drawSvgPath's `scale` option
@@ -125,28 +198,37 @@ class Cursor {
     this.page.drawLine({ start: { x: MARGIN, y: this.y }, end: { x: MARGIN + 46, y: this.y }, thickness: 2, color: MAGENTA });
     this.y -= 12;
   }
-  paragraph(text, size = 10.5, lineHeight = 15) {
+  /* Wraps word-by-word (not a single string draw) so a line can mix the
+     regular and bold fonts -- chart terms detected by tokenizeRich() render
+     in gold/bold as scan anchors, instead of every paragraph being one
+     uniform wall of same-weight text. */
+  paragraph(text, size = 10.5, lineHeight = 16) {
     const maxWidth = PAGE_SIZE[0] - MARGIN * 2;
-    const words = String(text || "").split(/\s+/).filter(Boolean);
-    let line = "";
-    for (const word of words) {
-      const test = line ? line + " " + word : word;
-      const width = this.font.widthOfTextAtSize(test, size);
-      if (width > maxWidth && line) {
+    const spaceWidth = this.font.widthOfTextAtSize(" ", size);
+    const tokens = tokenizeRich(text);
+    let line = [];
+    let lineWidth = 0;
+    for (const tok of tokens) {
+      const f = tok.bold ? this.boldFont : this.font;
+      const w = f.widthOfTextAtSize(tok.word, size);
+      const addWidth = (line.length ? spaceWidth : 0) + w;
+      if (lineWidth + addWidth > maxWidth && line.length) {
         this.drawLine(line, size, lineHeight);
-        line = word;
+        line = [tok];
+        lineWidth = w;
       } else {
-        line = test;
+        line.push(tok);
+        lineWidth += addWidth;
       }
     }
-    if (line) this.drawLine(line, size, lineHeight);
-    this.y -= 8;
+    if (line.length) this.drawLine(line, size, lineHeight);
+    this.y -= 10;
   }
   /* AI-written sections come back as one string with blank lines between paragraphs
      (the prompt asks for that). paragraph() alone would collapse those -- it only
      wraps on word boundaries -- so this splits on blank lines first and renders each
      paragraph separately, with its own trailing gap, instead of one dense block. */
-  sectionText(text, size = 10.5, lineHeight = 15) {
+  sectionText(text, size = 10.5, lineHeight = 16) {
     const paragraphs = String(text || "")
       .split(/\n\s*\n/)
       .map((p) => p.trim())
@@ -157,9 +239,18 @@ class Cursor {
     }
     paragraphs.forEach((p) => this.paragraph(p, size, lineHeight));
   }
-  drawLine(line, size, lineHeight) {
+  /* Draws one wrapped line as a sequence of words rather than a single
+     drawText call, since a line can mix the regular font (plain text) and
+     bold font (highlighted chart terms, drawn in gold) token by token. */
+  drawLine(tokens, size, lineHeight) {
     this.ensureSpace(lineHeight);
-    this.page.drawText(line, { x: MARGIN, y: this.y, size, font: this.font, color: INK });
+    const spaceWidth = this.font.widthOfTextAtSize(" ", size);
+    let x = MARGIN;
+    tokens.forEach((tok) => {
+      const f = tok.bold ? this.boldFont : this.font;
+      this.page.drawText(tok.word, { x, y: this.y, size, font: f, color: tok.bold ? HIGHLIGHT : INK });
+      x += f.widthOfTextAtSize(tok.word, size) + spaceWidth;
+    });
     this.y -= lineHeight;
   }
   row(cells, widths, opts = {}) {
@@ -224,46 +315,61 @@ export async function buildReadingPdf(payload, interpretation) {
   // Ascendant" or "Outer Planets: Uranus, Neptune & Pluto" used to.
   cursor.newPage();
   cursor.heading("Sun", 14, { kicker: "SECTION 4" });
+  drawPointFactLine(cursor, payload, "Sun");
   cursor.sectionText(sections.sunSection);
   cursor.heading("Ascendant", 14, { kicker: "SECTION 5" });
+  drawPointFactLine(cursor, payload, "Ascendant");
   cursor.sectionText(sections.ascendantSection);
   cursor.heading("Moon", 14, { kicker: "SECTION 6" });
+  drawPointFactLine(cursor, payload, "Moon");
   cursor.sectionText(sections.moonSection);
 
   cursor.newPage();
   cursor.heading("Mercury", 14, { kicker: "SECTION 7" });
+  drawPointFactLine(cursor, payload, "Mercury");
   cursor.sectionText(sections.mercurySection);
   cursor.heading("Venus", 14, { kicker: "SECTION 8" });
+  drawPointFactLine(cursor, payload, "Venus");
   cursor.sectionText(sections.venusSection);
   cursor.heading("Mars", 14, { kicker: "SECTION 9" });
+  drawPointFactLine(cursor, payload, "Mars");
   cursor.sectionText(sections.marsSection);
 
   drawPlacementsTable(cursor, payload);
 
   cursor.newPage();
   cursor.heading("Jupiter", 14, { kicker: "SECTION 10" });
+  drawPointFactLine(cursor, payload, "Jupiter");
   cursor.sectionText(sections.jupiterSection);
   cursor.heading("Saturn", 14, { kicker: "SECTION 11" });
+  drawPointFactLine(cursor, payload, "Saturn");
   cursor.sectionText(sections.saturnSection);
 
   cursor.newPage();
   cursor.heading("North Node", 14, { kicker: "SECTION 12" });
+  drawPointFactLine(cursor, payload, "NorthNode");
   cursor.sectionText(sections.northNodeSection);
   cursor.heading("South Node", 14, { kicker: "SECTION 13" });
+  drawPointFactLine(cursor, payload, "SouthNode");
   cursor.sectionText(sections.southNodeSection);
   cursor.heading("Midheaven", 14, { kicker: "SECTION 14" });
+  drawPointFactLine(cursor, payload, "MC");
   cursor.sectionText(sections.midheavenSection);
 
   cursor.newPage();
   cursor.heading("Uranus", 14, { kicker: "SECTION 15" });
+  drawPointFactLine(cursor, payload, "Uranus");
   cursor.sectionText(sections.uranusSection);
   cursor.heading("Neptune", 14, { kicker: "SECTION 16" });
+  drawPointFactLine(cursor, payload, "Neptune");
   cursor.sectionText(sections.neptuneSection);
   cursor.heading("Pluto", 14, { kicker: "SECTION 17" });
+  drawPointFactLine(cursor, payload, "Pluto");
   cursor.sectionText(sections.plutoSection);
 
   cursor.newPage();
   cursor.heading("Chiron", 14, { kicker: "SECTION 18" });
+  drawPointFactLine(cursor, payload, "Chiron");
   cursor.sectionText(sections.chironSection);
 
   cursor.newPage();
@@ -468,6 +574,18 @@ async function drawWheelImage(doc, cursor, payload) {
   const h = png.height * scale;
   cursor.page.drawImage(png, { x: MARGIN + (maxWidth - w) / 2, y: cursor.y - h, width: w, height: h });
   cursor.y -= h + 10;
+}
+
+/* One scannable fact line (sign, degree, house) before a planet section's
+   prose -- the same pattern already used for the 13th-house occupants line
+   and the mini reading's Lilith/Eve placements, just applied to every
+   individual planet/point section now that each one is its own heading. */
+function drawPointFactLine(cursor, payload, key) {
+  const p = (payload.points || []).find((point) => point.key === key);
+  if (!p) return;
+  const line = `${p.trueSky.constellation} ${Math.floor(p.trueSky.degree)}° · House ${p.house}${p.retrograde ? " · Retrograde" : ""}`;
+  cursor.paragraph(line, 9.5, 13);
+  cursor.spacer(2);
 }
 
 function drawPlacementsTable(cursor, payload) {
