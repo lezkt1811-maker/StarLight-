@@ -3,7 +3,7 @@ import { deriveChartFacts, describeOccupants, describeStelliums } from "./facts.
 import { LOGO_BADGE_PNG_BASE64 } from "./logo.js";
 
 const PAGE_SIZE = [612, 792]; // US Letter
-const MARGIN = 54;
+const MARGIN = 58; // slightly more generous side margins for comfortable mobile reading
 // Dark purple page, not white-with-black-text -- matches the live site's own
 // cosmic dark theme (body background #070B14, violet/magenta gradient accents)
 // instead of reading like a plain printout.
@@ -12,7 +12,7 @@ const BOX_BG = rgb(0.125, 0.058, 0.205); // lighter purple panel fill for the co
 const ACCENT = rgb(0.69, 0.149, 1.0); // bright violet (site brand #B026FF) — heading/title text
 const MAGENTA = rgb(1.0, 0.18, 0.82); // vivid pink (site brand #FF2ED1) — rules, underlines, top band
 const INK = rgb(0.97, 0.97, 0.99); // near-white body text
-const MUTED = rgb(0.74, 0.7, 0.86); // light lavender for secondary/table text
+const MUTED = rgb(0.82, 0.79, 0.92); // light lavender for secondary/table text -- brightened for contrast
 const RULE_LIGHT = rgb(0.5, 0.32, 0.68); // mid-violet border, visible against the dark page/box fill
 const GOLD_BRIGHT = rgb(1.0, 0.84, 0.25); // bright metallic gold — border stars/sparkles
 const GOLD_SOFT = rgb(0.86, 0.68, 0.32); // deeper champagne gold — border stars/sparkles, alternates with GOLD_BRIGHT
@@ -137,10 +137,12 @@ class Cursor {
     this.drawTopBand();
     this.drawStarBorder();
   }
-  /* A scattered gold star/sparkle frame around the outer edge of every page --
-     confined to the margin band outside the MARGIN=54 content area (and clear
-     of the top band and the bottom-right page-number corner) so it never
-     overlaps real text, just decorates the border around it. */
+  /* A scattered gold star/sparkle accent along the top and bottom edges of
+     every page only -- no longer runs down the left/right sides, since those
+     columns sat directly beside the body text for the entire height of every
+     page and visually competed with it rather than framing it. Confined to
+     the margin band outside the content area (and clear of the top band and
+     the bottom-right page-number corner) so it never overlaps real text. */
   drawStarBorder() {
     const w = PAGE_SIZE[0];
     const h = PAGE_SIZE[1];
@@ -153,8 +155,6 @@ class Cursor {
     // merging together. This keeps a clear gap even at max star size.
     for (let x = 20; x < w - 20; x += spacing) positions.push({ x: x + jitter(10), y: h - 10 - Math.random() * 8 });
     for (let x = 20; x < w - 110; x += spacing) positions.push({ x: x + jitter(10), y: 10 + Math.random() * 8 });
-    for (let y = 40; y < h - 40; y += spacing) positions.push({ x: 14 + Math.random() * 10, y: y + jitter(10) });
-    for (let y = 40; y < h - 40; y += spacing) positions.push({ x: w - 14 - Math.random() * 10, y: y + jitter(10) });
 
     positions.forEach((p, i) => {
       const isSparkle = i % 3 === 0;
@@ -188,7 +188,7 @@ class Cursor {
     if (this.y - height < MARGIN) this.newPage();
   }
   heading(text, size = 14, opts = {}) {
-    this.ensureSpace(size + 22);
+    this.ensureSpace(size + 24);
     if (opts.kicker) {
       this.page.drawText(opts.kicker, { x: MARGIN, y: this.y, size: 9, font: this.boldFont, color: MUTED });
       this.y -= 12;
@@ -196,13 +196,14 @@ class Cursor {
     this.page.drawText(text, { x: MARGIN, y: this.y, size, font: this.boldFont, color: ACCENT });
     this.y -= size + 6;
     this.page.drawLine({ start: { x: MARGIN, y: this.y }, end: { x: MARGIN + 46, y: this.y }, thickness: 2, color: MAGENTA });
-    this.y -= 12;
+    this.y -= 15;
   }
   /* Wraps word-by-word (not a single string draw) so a line can mix the
      regular and bold fonts -- chart terms detected by tokenizeRich() render
      in gold/bold as scan anchors, instead of every paragraph being one
-     uniform wall of same-weight text. */
-  paragraph(text, size = 10.5, lineHeight = 16) {
+     uniform wall of same-weight text. Default size/lineHeight bumped (10.5/16
+     -> 11.5/17) for comfortable mobile reading without constant zooming. */
+  paragraph(text, size = 11.5, lineHeight = 17) {
     const maxWidth = PAGE_SIZE[0] - MARGIN * 2;
     const spaceWidth = this.font.widthOfTextAtSize(" ", size);
     const tokens = tokenizeRich(text);
@@ -222,13 +223,13 @@ class Cursor {
       }
     }
     if (line.length) this.drawLine(line, size, lineHeight);
-    this.y -= 10;
+    this.y -= 13;
   }
   /* AI-written sections come back as one string with blank lines between paragraphs
      (the prompt asks for that). paragraph() alone would collapse those -- it only
      wraps on word boundaries -- so this splits on blank lines first and renders each
      paragraph separately, with its own trailing gap, instead of one dense block. */
-  sectionText(text, size = 10.5, lineHeight = 16) {
+  sectionText(text, size = 11.5, lineHeight = 17) {
     const paragraphs = String(text || "")
       .split(/\n\s*\n/)
       .map((p) => p.trim())
@@ -238,6 +239,44 @@ class Cursor {
       return;
     }
     paragraphs.forEach((p) => this.paragraph(p, size, lineHeight));
+  }
+  /* A fully-bold, gold "data chip" line (not just keyword highlighting) with
+     a thin left accent bar, for pure-fact lines that should read as a
+     quick-reference island above the prose rather than part of it -- the
+     per-planet sign/degree/house/aspect line, the stellium callout, and
+     house-occupant lines all use this instead of a plain paragraph. */
+  boldDataLine(text, size = 10, lineHeight = 14) {
+    const indent = 14;
+    const maxWidth = PAGE_SIZE[0] - MARGIN * 2 - indent;
+    const words = String(text || "").split(/\s+/).filter(Boolean);
+    const spaceWidth = this.boldFont.widthOfTextAtSize(" ", size);
+    const lines = [];
+    let line = "";
+    let lineWidth = 0;
+    for (const word of words) {
+      const w = this.boldFont.widthOfTextAtSize(word, size);
+      const addWidth = (line ? spaceWidth : 0) + w;
+      if (lineWidth + addWidth > maxWidth && line) {
+        lines.push(line);
+        line = word;
+        lineWidth = w;
+      } else {
+        line = line ? line + " " + word : word;
+        lineWidth += addWidth;
+      }
+    }
+    if (line) lines.push(line);
+    if (!lines.length) return;
+
+    this.ensureSpace(lines.length * lineHeight + 8);
+    const barTop = this.y + 3;
+    lines.forEach((l) => {
+      this.page.drawText(l, { x: MARGIN + indent, y: this.y, size, font: this.boldFont, color: HIGHLIGHT });
+      this.y -= lineHeight;
+    });
+    const barBottom = this.y + lineHeight - 3;
+    this.page.drawRectangle({ x: MARGIN, y: barBottom, width: 2.5, height: barTop - barBottom, color: MAGENTA });
+    this.y -= 8;
   }
   /* Draws one wrapped line as a sequence of words rather than a single
      drawText call, since a line can mix the regular font (plain text) and
@@ -255,7 +294,14 @@ class Cursor {
   }
   row(cells, widths, opts = {}) {
     const size = opts.size || 9;
-    this.ensureSpace(size + 7);
+    const rowHeight = size + 7;
+    this.ensureSpace(rowHeight);
+    // Light zebra banding on alternating data rows (never the header) --
+    // gives each row a clear edge to scan against instead of a flat grid.
+    if (opts.band) {
+      const tableWidth = widths.reduce((a, b) => a + b, 0);
+      this.page.drawRectangle({ x: MARGIN - 4, y: this.y - rowHeight + size + 2, width: tableWidth + 8, height: rowHeight, color: BOX_BG });
+    }
     let x = MARGIN;
     cells.forEach((c, i) => {
       this.page.drawText(String(c ?? ""), {
@@ -267,7 +313,7 @@ class Cursor {
       });
       x += widths[i];
     });
-    this.y -= size + 7;
+    this.y -= rowHeight;
   }
   spacer(h = 10) {
     this.y -= h;
@@ -297,8 +343,7 @@ export async function buildReadingPdf(payload, interpretation) {
   cursor.heading("Your True-Sky Chart at a Glance", 15, { kicker: "SECTION 1" });
   cursor.sectionText(sections.chartGlance);
   if (facts.hasStelliums) {
-    cursor.spacer(4);
-    cursor.paragraph(`Stelliums detected: ${describeStelliums(facts.stelliums)}`, 9.5, 13);
+    cursor.boldDataLine(`Stelliums detected: ${describeStelliums(facts.stelliums)}`);
   }
 
   cursor.newPage();
@@ -306,8 +351,7 @@ export async function buildReadingPdf(payload, interpretation) {
   cursor.sectionText(sections.ophiuchusSection);
 
   cursor.heading("The 13th House", 15, { kicker: "SECTION 3" });
-  cursor.paragraph(`Occupants: ${describeOccupants(facts.house13Occupants)}`, 9.5, 13);
-  cursor.spacer(4);
+  cursor.boldDataLine(`Occupants: ${describeOccupants(facts.house13Occupants)}`);
   cursor.sectionText(sections.house13Section);
 
   // Every planet and point below gets its own heading and its own section --
@@ -315,61 +359,61 @@ export async function buildReadingPdf(payload, interpretation) {
   // Ascendant" or "Outer Planets: Uranus, Neptune & Pluto" used to.
   cursor.newPage();
   cursor.heading("Sun", 14, { kicker: "SECTION 4" });
-  drawPointFactLine(cursor, payload, "Sun");
+  drawPointDataLine(cursor, payload, "Sun", "Sun");
   cursor.sectionText(sections.sunSection);
   cursor.heading("Ascendant", 14, { kicker: "SECTION 5" });
-  drawPointFactLine(cursor, payload, "Ascendant");
+  drawPointDataLine(cursor, payload, "Ascendant", "Ascendant");
   cursor.sectionText(sections.ascendantSection);
   cursor.heading("Moon", 14, { kicker: "SECTION 6" });
-  drawPointFactLine(cursor, payload, "Moon");
+  drawPointDataLine(cursor, payload, "Moon", "Moon");
   cursor.sectionText(sections.moonSection);
 
   cursor.newPage();
   cursor.heading("Mercury", 14, { kicker: "SECTION 7" });
-  drawPointFactLine(cursor, payload, "Mercury");
+  drawPointDataLine(cursor, payload, "Mercury", "Mercury");
   cursor.sectionText(sections.mercurySection);
   cursor.heading("Venus", 14, { kicker: "SECTION 8" });
-  drawPointFactLine(cursor, payload, "Venus");
+  drawPointDataLine(cursor, payload, "Venus", "Venus");
   cursor.sectionText(sections.venusSection);
   cursor.heading("Mars", 14, { kicker: "SECTION 9" });
-  drawPointFactLine(cursor, payload, "Mars");
+  drawPointDataLine(cursor, payload, "Mars", "Mars");
   cursor.sectionText(sections.marsSection);
 
   drawPlacementsTable(cursor, payload);
 
   cursor.newPage();
   cursor.heading("Jupiter", 14, { kicker: "SECTION 10" });
-  drawPointFactLine(cursor, payload, "Jupiter");
+  drawPointDataLine(cursor, payload, "Jupiter", "Jupiter");
   cursor.sectionText(sections.jupiterSection);
   cursor.heading("Saturn", 14, { kicker: "SECTION 11" });
-  drawPointFactLine(cursor, payload, "Saturn");
+  drawPointDataLine(cursor, payload, "Saturn", "Saturn");
   cursor.sectionText(sections.saturnSection);
 
   cursor.newPage();
   cursor.heading("North Node", 14, { kicker: "SECTION 12" });
-  drawPointFactLine(cursor, payload, "NorthNode");
+  drawPointDataLine(cursor, payload, "NorthNode", "North Node");
   cursor.sectionText(sections.northNodeSection);
   cursor.heading("South Node", 14, { kicker: "SECTION 13" });
-  drawPointFactLine(cursor, payload, "SouthNode");
+  drawPointDataLine(cursor, payload, "SouthNode", "South Node");
   cursor.sectionText(sections.southNodeSection);
   cursor.heading("Midheaven", 14, { kicker: "SECTION 14" });
-  drawPointFactLine(cursor, payload, "MC");
+  drawPointDataLine(cursor, payload, "MC", "Midheaven");
   cursor.sectionText(sections.midheavenSection);
 
   cursor.newPage();
   cursor.heading("Uranus", 14, { kicker: "SECTION 15" });
-  drawPointFactLine(cursor, payload, "Uranus");
+  drawPointDataLine(cursor, payload, "Uranus", "Uranus");
   cursor.sectionText(sections.uranusSection);
   cursor.heading("Neptune", 14, { kicker: "SECTION 16" });
-  drawPointFactLine(cursor, payload, "Neptune");
+  drawPointDataLine(cursor, payload, "Neptune", "Neptune");
   cursor.sectionText(sections.neptuneSection);
   cursor.heading("Pluto", 14, { kicker: "SECTION 17" });
-  drawPointFactLine(cursor, payload, "Pluto");
+  drawPointDataLine(cursor, payload, "Pluto", "Pluto");
   cursor.sectionText(sections.plutoSection);
 
   cursor.newPage();
   cursor.heading("Chiron", 14, { kicker: "SECTION 18" });
-  drawPointFactLine(cursor, payload, "Chiron");
+  drawPointDataLine(cursor, payload, "Chiron", "Chiron");
   cursor.sectionText(sections.chironSection);
 
   cursor.newPage();
@@ -417,25 +461,19 @@ export async function buildMiniReadingPdf(payload, interpretation) {
 
   cursor.newPage();
   cursor.heading("Black Moon Lilith", 15, { kicker: "SECTION 1" });
-  cursor.paragraph(
+  cursor.boldDataLine(
     facts.lilithPoint
-      ? `Placement: ${facts.lilithPoint.trueSky.constellation} ${Math.floor(facts.lilithPoint.trueSky.degree)}°, House ${facts.lilithPoint.house}.`
-      : "Not calculated for this chart.",
-    9.5,
-    13
+      ? `Placement: ${facts.lilithPoint.trueSky.constellation} ${Math.floor(facts.lilithPoint.trueSky.degree)}°, House ${facts.lilithPoint.house}`
+      : "Not calculated for this chart."
   );
-  cursor.spacer(4);
   cursor.sectionText(sections.lilithSection);
 
   cursor.heading("Eve", 15, { kicker: "SECTION 2" });
-  cursor.paragraph(
+  cursor.boldDataLine(
     facts.evePoint
-      ? `Placement: ${facts.evePoint.trueSky.constellation} ${Math.floor(facts.evePoint.trueSky.degree)}°, House ${facts.evePoint.house}.`
-      : "Not calculated for this chart.",
-    9.5,
-    13
+      ? `Placement: ${facts.evePoint.trueSky.constellation} ${Math.floor(facts.evePoint.trueSky.degree)}°, House ${facts.evePoint.house}`
+      : "Not calculated for this chart."
   );
-  cursor.spacer(4);
   cursor.sectionText(sections.eveSection);
 
   cursor.heading("The Lilith–Eve Axis", 15, { kicker: "SECTION 3" });
@@ -576,23 +614,33 @@ async function drawWheelImage(doc, cursor, payload) {
   cursor.y -= h + 10;
 }
 
-/* One scannable fact line (sign, degree, house) before a planet section's
-   prose -- the same pattern already used for the 13th-house occupants line
-   and the mini reading's Lilith/Eve placements, just applied to every
-   individual planet/point section now that each one is its own heading. */
-function drawPointFactLine(cursor, payload, key) {
+/* A bold "data chip" line before a planet section's prose -- sign, degree,
+   house, retrograde, and now every aspect involving that point with its
+   orb, e.g. "Mercury in Ophiuchus at 14° in House 5 (conjunct Sun, orb
+   6.4°; sextile Pluto, orb 2°)". displayName must match payload.aspects'
+   point1/point2 naming (the human-readable name, e.g. "North Node") --
+   key is the internal chart-engine name used on payload.points (e.g.
+   "NorthNode") since the two don't always match. */
+function drawPointDataLine(cursor, payload, key, displayName) {
   const p = (payload.points || []).find((point) => point.key === key);
   if (!p) return;
-  const line = `${p.trueSky.constellation} ${Math.floor(p.trueSky.degree)}° · House ${p.house}${p.retrograde ? " · Retrograde" : ""}`;
-  cursor.paragraph(line, 9.5, 13);
-  cursor.spacer(2);
+  const aspectBits = (payload.aspects || [])
+    .filter((a) => a.point1 === displayName || a.point2 === displayName)
+    .map((a) => {
+      const other = a.point1 === displayName ? a.point2 : a.point1;
+      return `${String(a.aspect || "").toLowerCase()} ${other}, orb ${a.orb}°`;
+    });
+  const retro = p.retrograde ? ", Retrograde" : "";
+  const aspectsText = aspectBits.length ? ` (${aspectBits.join("; ")})` : "";
+  const line = `${displayName} in ${p.trueSky.constellation} at ${Math.floor(p.trueSky.degree)}° in House ${p.house}${retro}${aspectsText}`;
+  cursor.boldDataLine(line);
 }
 
 function drawPlacementsTable(cursor, payload) {
   cursor.heading("Placements Reference", 12);
   const widths = [95, 45, 150, 150];
   cursor.row(["Point", "House", "True Sky", "Tropical"], widths, { bold: true, size: 9.5 });
-  (payload.points || []).forEach((p) => {
+  (payload.points || []).forEach((p, i) => {
     cursor.row(
       [
         p.name + (p.retrograde ? " (Rx)" : ""),
@@ -600,7 +648,8 @@ function drawPlacementsTable(cursor, payload) {
         `${p.trueSky.constellation} ${Math.floor(p.trueSky.degree)}°`,
         `${p.tropical.sign} ${Math.floor(p.tropical.degree)}°`,
       ],
-      widths
+      widths,
+      { band: i % 2 === 1 }
     );
   });
 }
@@ -610,7 +659,7 @@ function drawAllHousesTable(cursor, facts) {
   const widths = [55, 490];
   cursor.row(["House", "Occupants"], widths, { bold: true, size: 9.5 });
   for (let h = 1; h <= 13; h++) {
-    cursor.row([h, describeOccupants(facts.houseOccupants[h])], widths, { size: 9 });
+    cursor.row([h, describeOccupants(facts.houseOccupants[h])], widths, { size: 9, band: h % 2 === 0 });
   }
 }
 
@@ -618,8 +667,8 @@ function drawAspectsTable(cursor, payload) {
   cursor.spacer(6);
   const widths = [130, 100, 130, 80];
   cursor.row(["Point 1", "Aspect", "Point 2", "Orb"], widths, { bold: true, size: 9.5 });
-  (payload.aspects || []).forEach((a) => {
-    cursor.row([a.point1, a.aspect, a.point2, `${a.orb}°`], widths);
+  (payload.aspects || []).forEach((a, i) => {
+    cursor.row([a.point1, a.aspect, a.point2, `${a.orb}°`], widths, { band: i % 2 === 1 });
   });
 }
 
@@ -627,10 +676,11 @@ function drawTropicalComparisonTable(cursor, payload) {
   cursor.spacer(6);
   const widths = [110, 150, 150, 60];
   cursor.row(["Point", "Tropical", "True Sky", "Changed"], widths, { bold: true, size: 9.5 });
-  (payload.tropicalComparison || []).forEach((c) => {
+  (payload.tropicalComparison || []).forEach((c, i) => {
     cursor.row(
       [c.point, `${c.tropicalSign} ${Math.floor(c.tropicalDegree)}°`, `${c.trueSkyConstellation} ${Math.floor(c.trueSkyDegree)}°`, c.changedSign ? "Yes" : ""],
-      widths
+      widths,
+      { band: i % 2 === 1 }
     );
   });
 }
