@@ -71,19 +71,24 @@ class Cursor {
   drawStarBorder() {
     const w = PAGE_SIZE[0];
     const h = PAGE_SIZE[1];
-    const spacing = 42;
+    const spacing = 50;
     const positions = [];
-    for (let x = 20; x < w - 20; x += spacing) positions.push({ x: x + jitter(10), y: h - 18 - Math.random() * 16 });
-    for (let x = 20; x < w - 110; x += spacing) positions.push({ x: x + jitter(10), y: 18 + Math.random() * 16 });
-    for (let y = 40; y < h - 40; y += spacing) positions.push({ x: 18 + Math.random() * 16, y: y + jitter(10) });
-    for (let y = 40; y < h - 40; y += spacing) positions.push({ x: w - 18 - Math.random() * 16, y: y + jitter(10) });
+    // Top row sits tucked just under the 7px top band (785-792) instead of
+    // fanning down toward y=758 -- at the old range, a large-scaled star's
+    // bottom tip could reach to within a few points of the "SECTION N"
+    // heading that starts at y=738, reading as the star and the title
+    // merging together. This keeps a clear gap even at max star size.
+    for (let x = 20; x < w - 20; x += spacing) positions.push({ x: x + jitter(10), y: h - 10 - Math.random() * 8 });
+    for (let x = 20; x < w - 110; x += spacing) positions.push({ x: x + jitter(10), y: 10 + Math.random() * 8 });
+    for (let y = 40; y < h - 40; y += spacing) positions.push({ x: 14 + Math.random() * 10, y: y + jitter(10) });
+    for (let y = 40; y < h - 40; y += spacing) positions.push({ x: w - 14 - Math.random() * 10, y: y + jitter(10) });
 
     positions.forEach((p, i) => {
       const isSparkle = i % 3 === 0;
       this.page.drawSvgPath(isSparkle ? SPARKLE_PATH : STAR_PATH, {
         x: p.x,
         y: p.y,
-        scale: 0.55 + Math.random() * 1.1,
+        scale: 0.5 + Math.random() * 0.65,
         color: i % 2 === 0 ? GOLD_BRIGHT : GOLD_SOFT,
         opacity: 0.55 + Math.random() * 0.45,
         borderWidth: 0,
