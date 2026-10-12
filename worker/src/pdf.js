@@ -6,8 +6,8 @@ const MARGIN = 54;
 // Dark purple page, not white-with-black-text -- matches the live site's own
 // cosmic dark theme (body background #070B14, violet/magenta gradient accents)
 // instead of reading like a plain printout.
-const PAGE_BG = rgb(0.153, 0.067, 0.267); // deep purple (~#271144)
-const BOX_BG = rgb(0.212, 0.098, 0.349); // lighter purple panel fill for the cover info box
+const PAGE_BG = rgb(0.08, 0.035, 0.145); // deeper, darker purple (~#15092A)
+const BOX_BG = rgb(0.125, 0.058, 0.205); // lighter purple panel fill for the cover info box, still deeper than before
 const ACCENT = rgb(0.69, 0.149, 1.0); // bright violet (site brand #B026FF) — heading/title text
 const MAGENTA = rgb(1.0, 0.18, 0.82); // vivid pink (site brand #FF2ED1) — rules, underlines, top band
 const INK = rgb(0.97, 0.97, 0.99); // near-white body text
