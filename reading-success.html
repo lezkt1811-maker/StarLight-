@@ -128,17 +128,55 @@ p{font-size:14px;line-height:1.7;color:rgba(255,233,168,.85);margin-bottom:14px;
     fulfilled: 100,
   };
 
+  /* "generating" (the AI actually writing all 22+ sections) is by far the
+     slowest stage and can take over a minute, so without this the bar would
+     sit frozen at 50% that whole time even though real work is happening.
+     Each stage gets a soft ceiling just below the next stage's real value --
+     a separate timer creeps lastPercent up toward it while the status poll
+     keeps reporting the same stage, and a real status change always
+     overrides the creep with its own true value. */
+  const stageCeiling = {
+    prepared: 18,
+    pending: 18,
+    paid: 48,
+    generating: 76,
+    generated: 90,
+    emailing: 98,
+    fulfilled: 100,
+  };
+
   const progressFill = document.getElementById("progressFill");
   const progressPct = document.getElementById("progressPct");
   let lastPercent = 0;
+  let currentStatus = null;
+  let ceiling = 100;
 
-  function setProgress(status){
-    const target = stagePercent[status];
-    if(typeof target === "number") lastPercent = target;
+  function renderProgress(){
     progressFill.style.width = lastPercent + "%";
     progressPct.textContent = lastPercent + "%";
-    progressFill.className = "progress-fill" + (status === "fulfilled" ? " ready" : status === "failed" ? " failed" : "");
+    progressFill.className = "progress-fill" + (currentStatus === "fulfilled" ? " ready" : currentStatus === "failed" ? " failed" : "");
   }
+
+  function setProgress(status){
+    // Only reset to the stage's floor on an actual status transition -- otherwise
+    // a repeat poll reporting the same still-in-progress status would stomp the
+    // creep's progress back down to the floor every 4 seconds.
+    if(status !== currentStatus){
+      const target = stagePercent[status];
+      if(typeof target === "number") lastPercent = target;
+      currentStatus = status;
+      ceiling = stageCeiling[status] ?? lastPercent;
+    }
+    renderProgress();
+  }
+
+  setInterval(function(){
+    if(currentStatus === "fulfilled" || currentStatus === "failed" || currentStatus === null) return;
+    if(lastPercent < ceiling){
+      lastPercent += 1;
+      renderProgress();
+    }
+  }, 1400);
 
   let attempts = 0;
   function poll(){
