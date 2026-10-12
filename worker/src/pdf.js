@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { deriveChartFacts, describeOccupants, describeStelliums } from "./facts.js";
+import { LOGO_BADGE_PNG_BASE64 } from "./logo.js";
 
 const PAGE_SIZE = [612, 792]; // US Letter
 const MARGIN = 54;
@@ -184,8 +185,9 @@ export async function buildReadingPdf(payload, interpretation) {
   const facts = deriveChartFacts(payload);
   const sections = interpretation || fallbackSections(payload, facts);
   const cursor = new Cursor(doc, font, boldFont);
+  const logoImage = await embedLogoBadge(doc);
 
-  drawCover(cursor, payload);
+  drawCover(cursor, payload, logoImage);
 
   if (payload.wheelImagePNG) {
     try {
@@ -298,8 +300,9 @@ export async function buildMiniReadingPdf(payload, interpretation) {
   const facts = deriveChartFacts(payload);
   const sections = interpretation || fallbackMiniSections(facts);
   const cursor = new Cursor(doc, font, boldFont);
+  const logoImage = await embedLogoBadge(doc);
 
-  drawMiniCover(cursor, payload);
+  drawMiniCover(cursor, payload, logoImage);
 
   cursor.newPage();
   cursor.heading("Black Moon Lilith", 15, { kicker: "SECTION 1" });
@@ -333,8 +336,9 @@ export async function buildMiniReadingPdf(payload, interpretation) {
   return doc.save();
 }
 
-function drawMiniCover(cursor, payload) {
+function drawMiniCover(cursor, payload, logoImage) {
   const { page } = cursor;
+  drawCoverLogoBadge(page, logoImage);
   cursor.y = PAGE_SIZE[1] - 220;
   page.drawText("Star Chart 13", { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: ACCENT });
   cursor.y -= 10;
@@ -365,8 +369,9 @@ function fallbackMiniSections(facts) {
   };
 }
 
-function drawCover(cursor, payload) {
+function drawCover(cursor, payload, logoImage) {
   const { page } = cursor;
+  drawCoverLogoBadge(page, logoImage);
   cursor.y = PAGE_SIZE[1] - 220;
   page.drawText("Star Chart 13", { x: MARGIN, y: cursor.y, size: 30, font: cursor.boldFont, color: ACCENT });
   cursor.y -= 10;
@@ -418,6 +423,31 @@ function drawCoverInfoBox(cursor, payload) {
   });
   cursor.y = boxTop - boxHeight - 14;
   page.drawText(`Generated: ${new Date().toISOString().slice(0, 10)}`, { x: MARGIN, y: cursor.y, size: 9, font: cursor.font, color: MUTED });
+}
+
+const LOGO_BADGE_SIZE = 150;
+
+/* Embeds the Star Chart 13 badge logo once per document (not once per page --
+   it only ever appears on the cover), returning null instead of throwing if
+   the embed somehow fails, so a bad asset can never break PDF generation for
+   a paying customer. */
+async function embedLogoBadge(doc) {
+  try {
+    return await doc.embedPng(base64ToBytes(LOGO_BADGE_PNG_BASE64));
+  } catch (e) {
+    console.error("Could not embed logo badge", e.message);
+    return null;
+  }
+}
+
+/* Sits in the empty top-right of the cover page, clear of the title (top-left)
+   and the info box (which starts well below it) -- decorative only, draws
+   nothing and shifts no other cover content if the embed above failed. */
+function drawCoverLogoBadge(page, logoImage) {
+  if (!logoImage) return;
+  const x = PAGE_SIZE[0] - MARGIN - LOGO_BADGE_SIZE;
+  const y = PAGE_SIZE[1] - 17 - LOGO_BADGE_SIZE;
+  page.drawImage(logoImage, { x, y, width: LOGO_BADGE_SIZE, height: LOGO_BADGE_SIZE });
 }
 
 async function drawWheelImage(doc, cursor, payload) {
