@@ -13,6 +13,39 @@ const MAGENTA = rgb(1.0, 0.18, 0.82); // vivid pink (site brand #FF2ED1) — rul
 const INK = rgb(0.97, 0.97, 0.99); // near-white body text
 const MUTED = rgb(0.74, 0.7, 0.86); // light lavender for secondary/table text
 const RULE_LIGHT = rgb(0.5, 0.32, 0.68); // mid-violet border, visible against the dark page/box fill
+const GOLD_BRIGHT = rgb(1.0, 0.84, 0.25); // bright metallic gold — border stars/sparkles
+const GOLD_SOFT = rgb(0.86, 0.68, 0.32); // deeper champagne gold — border stars/sparkles, alternates with GOLD_BRIGHT
+
+/* A 5-point star and a 4-point glitter sparkle, both centered on (0,0) at a
+   fixed base size -- scaled per-instance via drawSvgPath's `scale` option
+   instead of regenerating path strings per star, since the border scatters
+   dozens of these on every page. */
+function starSvgPath(outerR, innerR) {
+  const points = 5;
+  let d = "";
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const angle = (Math.PI / points) * i - Math.PI / 2;
+    d += `${i === 0 ? "M" : "L"}${(r * Math.cos(angle)).toFixed(2)} ${(r * Math.sin(angle)).toFixed(2)} `;
+  }
+  return d + "Z";
+}
+function sparkleSvgPath(outerR, innerR) {
+  const points = 4;
+  let d = "";
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const angle = (Math.PI / points) * i;
+    d += `${i === 0 ? "M" : "L"}${(r * Math.cos(angle)).toFixed(2)} ${(r * Math.sin(angle)).toFixed(2)} `;
+  }
+  return d + "Z";
+}
+const STAR_PATH = starSvgPath(5, 2);
+const SPARKLE_PATH = sparkleSvgPath(6, 1.3);
+
+function jitter(n) {
+  return (Math.random() - 0.5) * n;
+}
 
 class Cursor {
   constructor(doc, font, boldFont) {
@@ -28,6 +61,33 @@ class Cursor {
     this.y = PAGE_SIZE[1] - MARGIN;
     this.drawPageBackground();
     this.drawTopBand();
+    this.drawStarBorder();
+  }
+  /* A scattered gold star/sparkle frame around the outer edge of every page --
+     confined to the margin band outside the MARGIN=54 content area (and clear
+     of the top band and the bottom-right page-number corner) so it never
+     overlaps real text, just decorates the border around it. */
+  drawStarBorder() {
+    const w = PAGE_SIZE[0];
+    const h = PAGE_SIZE[1];
+    const spacing = 42;
+    const positions = [];
+    for (let x = 20; x < w - 20; x += spacing) positions.push({ x: x + jitter(10), y: h - 18 - Math.random() * 16 });
+    for (let x = 20; x < w - 110; x += spacing) positions.push({ x: x + jitter(10), y: 18 + Math.random() * 16 });
+    for (let y = 40; y < h - 40; y += spacing) positions.push({ x: 18 + Math.random() * 16, y: y + jitter(10) });
+    for (let y = 40; y < h - 40; y += spacing) positions.push({ x: w - 18 - Math.random() * 16, y: y + jitter(10) });
+
+    positions.forEach((p, i) => {
+      const isSparkle = i % 3 === 0;
+      this.page.drawSvgPath(isSparkle ? SPARKLE_PATH : STAR_PATH, {
+        x: p.x,
+        y: p.y,
+        scale: 0.55 + Math.random() * 1.1,
+        color: i % 2 === 0 ? GOLD_BRIGHT : GOLD_SOFT,
+        opacity: 0.55 + Math.random() * 0.45,
+        borderWidth: 0,
+      });
+    });
   }
   /* Every new page is blank white by default in pdf-lib regardless of what the
      rest of the document looks like, so the dark purple theme has to be painted
