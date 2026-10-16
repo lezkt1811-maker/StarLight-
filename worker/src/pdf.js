@@ -69,25 +69,30 @@ const BOLD_TERM_REGEX = new RegExp(
 );
 
 /* Splits text into {word, bold} tokens for word-by-word rendering with mixed
-   fonts on the same line -- a multi-word match (e.g. "Black Moon Lilith" or
-   "House 6") gets every one of its words tagged bold together. */
+   fonts on the same line. Each token is a whole whitespace-delimited word
+   straight from the original text -- punctuation attached to it (a comma,
+   period, or parenthesis with no space) stays part of that same token and
+   inherits its boldness by range overlap, rather than being sliced off into
+   its own token at the exact match boundary. Slicing at the match boundary
+   was the earlier bug: "Sun" matches as bold but the comma right after it
+   doesn't, so it became a separate non-bold token -- and every token gets a
+   space drawn before it, so "Sun," rendered as "Sun ,". Keeping punctuation
+   glued to its word (bold and all) avoids ever creating a token that wasn't
+   actually separated by whitespace in the source text. */
 function tokenizeRich(text) {
   const str = String(text || "");
+  const boldRanges = [];
+  for (const m of str.matchAll(BOLD_TERM_REGEX)) boldRanges.push([m.index, m.index + m[0].length]);
   const tokens = [];
-  let lastIndex = 0;
-  for (const m of str.matchAll(BOLD_TERM_REGEX)) {
-    if (m.index > lastIndex) tokens.push(...splitWords(str.slice(lastIndex, m.index), false));
-    tokens.push(...splitWords(m[0], true));
-    lastIndex = m.index + m[0].length;
+  const wordRe = /\S+/g;
+  let m;
+  while ((m = wordRe.exec(str))) {
+    const start = m.index;
+    const end = start + m[0].length;
+    const bold = boldRanges.some(([bs, be]) => start < be && end > bs);
+    tokens.push({ word: m[0], bold });
   }
-  if (lastIndex < str.length) tokens.push(...splitWords(str.slice(lastIndex), false));
   return tokens;
-}
-function splitWords(s, bold) {
-  return s
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) => ({ word, bold }));
 }
 
 /* A 5-point star and a 4-point glitter sparkle, both centered on (0,0) at a
