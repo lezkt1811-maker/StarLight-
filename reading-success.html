@@ -170,8 +170,9 @@ p{font-size:14px;line-height:1.7;color:rgba(255,233,168,.85);margin-bottom:14px;
     renderProgress();
   }
 
+  let pollingGaveUp = false;
   setInterval(function(){
-    if(currentStatus === "fulfilled" || currentStatus === "failed" || currentStatus === null) return;
+    if(pollingGaveUp || currentStatus === "fulfilled" || currentStatus === "failed" || currentStatus === null) return;
     if(lastPercent < ceiling){
       lastPercent += 1;
       renderProgress();
@@ -202,8 +203,21 @@ p{font-size:14px;line-height:1.7;color:rgba(255,233,168,.85);margin-bottom:14px;
           gaOnce("failed", "reading_delivery_failed", product);
         }
 
-        if(data.status !== "fulfilled" && data.status !== "failed" && attempts < 40){
-          setTimeout(poll, 4000);
+        if(data.status !== "fulfilled" && data.status !== "failed"){
+          if(attempts < 225){
+            setTimeout(poll, 4000);
+          } else {
+            // The backend's own processing window (the Cron Trigger sweep) runs up to
+            // 15 minutes, so giving up client-side polling at the old 160-second mark
+            // left the page frozen mid-generation while the reading was often still
+            // legitimately being written server-side -- especially now that a full
+            // reading covers 22+ sections and can take longer than it used to. Matches
+            // the client's polling window to that same ~15-minute budget, and says so
+            // plainly instead of silently going stale with no explanation.
+            statusEl.textContent = "Still working — this one's taking a little longer than usual. It'll still arrive by email; no need to keep this page open.";
+            statusEl.className = "status-line";
+            pollingGaveUp = true;
+          }
         }
       })
       .catch(function(){ statusEl.textContent = ""; });
