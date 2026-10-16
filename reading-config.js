@@ -14,9 +14,9 @@ const READING_SALES_CONFIG = {
 
   // $7 "Lilith & Eve Placement Reading" — a lower-cost, faster-turnaround product
   // shown right after someone generates their free chart, focused on their Black
-  // Moon Lilith and Eve placements. This is a plain Stripe Payment Link (no
-  // automated PDF pipeline like the $25 reading) since it's delivered manually
-  // within 24 hours.
+  // Moon Lilith and Eve placements. Shares the same automated /prepare → Stripe →
+  // webhook → PDF → email pipeline as the $25 reading (see worker/README.md) —
+  // it is not delivered manually.
   miniReadingPrice: 7,
   miniReadingPriceDisplay: "$7",
   miniReadingStripeUrl: "https://buy.stripe.com/fZu3cx4I4akK2dO8qigjC01",
