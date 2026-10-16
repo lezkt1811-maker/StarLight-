@@ -2,7 +2,7 @@
    sc13Compare : "Tropical vs True Sky 13" comparison tool
    ----------------------------------------------------------------------------
    This file is 100% additive. It does NOT redefine or alter any existing
-   Lilith and Eve Astrology function, constant, or DOM id. Every new name is prefixed
+   Star Chart 13 function, constant, or DOM id. Every new name is prefixed
    sc13Compare / sc13CompareCanvas etc.
 
    It reuses, unchanged, these existing globals defined in index.html's main
@@ -432,7 +432,7 @@ function sc13CompareCopyText(){
   });
   lines.push("");
   lines.push("The planets stayed in the same sky. The zodiac map changed.");
-  lines.push("Lilith and Eve Astrology");
+  lines.push("Star Chart 13");
   var text = lines.join("\n");
   var statusEl = document.getElementById("sc13CompareStatus");
   if(navigator.clipboard && navigator.clipboard.writeText){
@@ -643,7 +643,7 @@ function sc13CompareExportImage(){
     ctx.fillStyle = "rgba(234,231,255,.85)"; ctx.font = "italic 20px Arial,sans-serif";
     ctx.fillText("The planets stayed in the same sky. The zodiac map changed.", W/2, H-70);
     ctx.fillStyle = "#00e5ff"; ctx.font = "900 22px Arial,sans-serif";
-    ctx.fillText("Lilith and Eve Astrology", W/2, H-36);
+    ctx.fillText("Star Chart 13", W/2, H-36);
 
     var url = out.toDataURL("image/png");
     var a = document.createElement("a");

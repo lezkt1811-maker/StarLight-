@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /thank-you.html
+Disallow: /reading-success.html
+
+Sitemap: https://starchart13.com/sitemap.xml

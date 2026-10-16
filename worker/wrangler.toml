@@ -17,10 +17,37 @@ id = "a6cc1b69004d4c0c86599630a9546f95"
 ALLOWED_ORIGIN = "https://starchart13.com"
 FROM_EMAIL = "Lilith and Eve Astrology <readings@starchart13.com>"
 CONTACT_EMAIL = "katythomas96@yahoo.com"
-CLAUDE_MODEL = "claude-sonnet-5"
+CLAUDE_MODEL = "claude-sonnet-5-5"
+
+# Your own cell phone, in E.164 format (e.g. +18165551234) -- this is where the text
+# alert goes when an order needs manual attention. REPLACE this before it'll work.
+OWNER_PHONE = "REPLACE_WITH_YOUR_PHONE_NUMBER"
 
 # Secrets (never put these here — set with `wrangler secret put <NAME>`):
 #   STRIPE_SECRET_KEY       Stripe secret key (sk_live_... / sk_test_...)
 #   STRIPE_WEBHOOK_SECRET   Signing secret for the /webhook endpoint (whsec_...)
 #   RESEND_API_KEY          Resend API key (re_...)
 #   ANTHROPIC_API_KEY       Anthropic API key (sk-ant-...)
+#   TWILIO_ACCOUNT_SID      Twilio Account SID (console.twilio.com dashboard)
+#   TWILIO_AUTH_TOKEN       Twilio Auth Token (same dashboard)
+#   TWILIO_FROM_NUMBER      The Twilio phone number that sends the text, in E.164
+#   ADMIN_TOKEN             Bearer token for POST /admin/resend -- a recovery endpoint
+#                           that re-marks a fulfilled/failed order PAID so the next
+#                           sweep regenerates and re-sends it. Any long random string.
+
+# Lets us see real console.error output and exceptions from live orders in the
+# Cloudflare dashboard (Worker -> Observability) instead of only inferring what
+# happened from KV status fields. Declared here so a future deploy can't silently
+# turn this back off the way an unconditional secret push once clobbered a
+# manually-fixed secret.
+[observability.logs]
+enabled = true
+
+# Runs scheduled() every minute to pick up PAID orders and actually process them (AI
+# writing, PDF, email). The webhook itself only marks an order PAID and returns -- a
+# Worker's background (waitUntil) time after an HTTP response is capped at ~30 seconds
+# by Cloudflare, which isn't enough for the full chain, and orders were silently
+# freezing mid-"generating" because of exactly that cutoff. A scheduled invocation has
+# no such borrowed-time limit, so the slow work belongs here instead.
+[triggers]
+crons = ["* * * * *"]

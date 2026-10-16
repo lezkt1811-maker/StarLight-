@@ -2,8 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
-<title>Payment Received | Lilith and Eve Astrology</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://nominatim.openstreetmap.org https://timeapi.io https://starchart13-fulfillment.lezkt1811.workers.dev https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com; object-src 'none'; base-uri 'self';">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M2TKEEQX6J"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-M2TKEEQX6J");</script>
+<title>Payment Received | Star Chart 13</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <style>
@@ -26,6 +30,12 @@ p{font-size:14px;line-height:1.7;color:rgba(255,233,168,.85);margin-bottom:14px;
 .status-line{font-family:'Courier New',monospace; font-size:12px; color:rgba(255,233,168,.55); margin-top:16px;}
 .status-line.ready{color:#8dffb0;}
 .status-line.failed{color:#ff8f8f;}
+.progress-row{display:flex; align-items:center; gap:10px; margin-top:16px;}
+.progress-track{flex:1; height:10px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid rgba(255,215,0,.25); overflow:hidden;}
+.progress-fill{height:100%; width:0%; border-radius:999px; background:linear-gradient(90deg,#ffd700,#ffb347); box-shadow:0 0 10px rgba(255,215,0,.6); transition:width 1.1s ease, background .4s ease;}
+.progress-fill.ready{background:linear-gradient(90deg,#8dffb0,#2ee884);}
+.progress-fill.failed{background:linear-gradient(90deg,#ff8f8f,#ff5050);}
+.progress-pct{font-family:'Courier New',monospace; font-size:12px; color:rgba(255,233,168,.75); min-width:34px; text-align:right;}
 .btn-back{
   display:inline-block; margin-top:20px; padding:14px 28px; border-radius:999px;
   border:1px solid rgba(255,215,0,.4); background:rgba(255,215,0,.06); color:#ffd700;
@@ -40,11 +50,15 @@ p{font-size:14px;line-height:1.7;color:rgba(255,233,168,.85);margin-bottom:14px;
   <div class="check">✨</div>
   <h1>Payment Received</h1>
   <div class="card">
-    <p>Your Lilith and Eve Astrology reading is being prepared using the exact chart you already generated.</p>
+    <p>Your Star Chart 13 reading is being prepared using the exact chart you already generated.</p>
     <p>It will be emailed to you automatically as a PDF — usually within a few minutes. You don't need to keep this page open, and there's nothing else for you to do.</p>
     <div class="status-line" id="statusLine">Checking status…</div>
+    <div class="progress-row">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-pct" id="progressPct">0%</div>
+    </div>
   </div>
-  <a class="btn-back" href="index.html">&larr; Back to Lilith and Eve Astrology</a>
+  <a class="btn-back" href="index.html">&larr; Back to Star Chart 13</a>
   <p class="contact">
     Reading hasn't arrived after a while? Email <a id="contactLink" href="#">this address</a> with your payment confirmation and we'll sort it out.
   </p>
@@ -71,6 +85,24 @@ p{font-size:14px;line-height:1.7;color:rgba(255,233,168,.85);margin-bottom:14px;
     return;
   }
 
+  /* Fires a GA event at most once per Checkout Session ID, using localStorage as the
+     dedup store -- so a refresh or revisit of this exact success-page URL (same
+     session_id in the query string) never double-counts a purchase or delivery,
+     no matter how many times /status is polled or the page is reloaded. */
+  function gaOnce(key, name, params){
+    try{
+      const storeKey = "sc13_ga_" + key + "_" + sessionId;
+      if(localStorage.getItem(storeKey)) return;
+      localStorage.setItem(storeKey, "1");
+      if(typeof gtag === "function") gtag("event", name, params || {});
+    }catch(e){}
+  }
+
+  const PRODUCT_BY_SCHEMA = {
+    "starchart13-detailed-reading": {product_id:"full_reading_25", price:25},
+    "starchart13-mini-reading": {product_id:"mini_reading_7", price:7},
+  };
+
   const labels = {
     prepared: "Waiting for payment confirmation…",
     paid: "Payment confirmed — starting your reading…",
@@ -82,6 +114,71 @@ p{font-size:14px;line-height:1.7;color:rgba(255,233,168,.85);margin-bottom:14px;
     pending: "Waiting for payment confirmation…",
   };
 
+  /* Real fulfillment stages, not a simulated/fake progress animation -- each number is
+     how far through the actual pipeline (webhook -> AI writing -> PDF -> email) that
+     stage represents. "failed" freezes the bar wherever it last was, in red, rather
+     than resetting it, since the work really did get partway through. */
+  const stagePercent = {
+    prepared: 8,
+    pending: 8,
+    paid: 20,
+    generating: 50,
+    generated: 78,
+    emailing: 92,
+    fulfilled: 100,
+  };
+
+  /* "generating" (the AI actually writing all 22+ sections) is by far the
+     slowest stage and can take over a minute, so without this the bar would
+     sit frozen at 50% that whole time even though real work is happening.
+     Each stage gets a soft ceiling just below the next stage's real value --
+     a separate timer creeps lastPercent up toward it while the status poll
+     keeps reporting the same stage, and a real status change always
+     overrides the creep with its own true value. */
+  const stageCeiling = {
+    prepared: 18,
+    pending: 18,
+    paid: 48,
+    generating: 76,
+    generated: 90,
+    emailing: 98,
+    fulfilled: 100,
+  };
+
+  const progressFill = document.getElementById("progressFill");
+  const progressPct = document.getElementById("progressPct");
+  let lastPercent = 0;
+  let currentStatus = null;
+  let ceiling = 100;
+
+  function renderProgress(){
+    progressFill.style.width = lastPercent + "%";
+    progressPct.textContent = lastPercent + "%";
+    progressFill.className = "progress-fill" + (currentStatus === "fulfilled" ? " ready" : currentStatus === "failed" ? " failed" : "");
+  }
+
+  function setProgress(status){
+    // Only reset to the stage's floor on an actual status transition -- otherwise
+    // a repeat poll reporting the same still-in-progress status would stomp the
+    // creep's progress back down to the floor every 4 seconds.
+    if(status !== currentStatus){
+      const target = stagePercent[status];
+      if(typeof target === "number") lastPercent = target;
+      currentStatus = status;
+      ceiling = stageCeiling[status] ?? lastPercent;
+    }
+    renderProgress();
+  }
+
+  let pollingGaveUp = false;
+  setInterval(function(){
+    if(pollingGaveUp || currentStatus === "fulfilled" || currentStatus === "failed" || currentStatus === null) return;
+    if(lastPercent < ceiling){
+      lastPercent += 1;
+      renderProgress();
+    }
+  }, 1400);
+
   let attempts = 0;
   function poll(){
     attempts++;
@@ -91,8 +188,36 @@ p{font-size:14px;line-height:1.7;color:rgba(255,233,168,.85);margin-bottom:14px;
         const label = labels[data.status] || "Checking status…";
         statusEl.textContent = label;
         statusEl.className = "status-line" + (data.status === "fulfilled" ? " ready" : data.status === "failed" ? " failed" : "");
-        if(data.status !== "fulfilled" && data.status !== "failed" && attempts < 40){
-          setTimeout(poll, 4000);
+        setProgress(data.status);
+
+        const product = PRODUCT_BY_SCHEMA[data.schema] || {};
+        // Stripe only ever redirects here after a completed Checkout Session, so any
+        // status at or past "paid" is itself the purchase-confirmation signal.
+        if(data.status && data.status !== "pending" && data.status !== "prepared"){
+          gaOnce("purchase", "reading_purchase_completed", product);
+        }
+        if(data.status === "fulfilled"){
+          gaOnce("delivered", "reading_delivery_completed", product);
+        }
+        if(data.status === "failed"){
+          gaOnce("failed", "reading_delivery_failed", product);
+        }
+
+        if(data.status !== "fulfilled" && data.status !== "failed"){
+          if(attempts < 225){
+            setTimeout(poll, 4000);
+          } else {
+            // The backend's own processing window (the Cron Trigger sweep) runs up to
+            // 15 minutes, so giving up client-side polling at the old 160-second mark
+            // left the page frozen mid-generation while the reading was often still
+            // legitimately being written server-side -- especially now that a full
+            // reading covers 22+ sections and can take longer than it used to. Matches
+            // the client's polling window to that same ~15-minute budget, and says so
+            // plainly instead of silently going stale with no explanation.
+            statusEl.textContent = "Still working — this one's taking a little longer than usual. It'll still arrive by email; no need to keep this page open.";
+            statusEl.className = "status-line";
+            pollingGaveUp = true;
+          }
         }
       })
       .catch(function(){ statusEl.textContent = ""; });
