@@ -187,6 +187,7 @@ details.sc13-collapse:not([open]) > summary.sc13-collapse-summary{ margin-bottom
 #sc13StickyBuy button.sc13-sticky-btn{ flex-shrink:0; padding:11px 16px; border-radius:10px; border:1px solid rgba(176,38,255,.85); background:linear-gradient(90deg,#B026FF,#FF2ED1); color:#fff; font-family:Raleway,sans-serif; font-weight:900; font-size:12.5px; letter-spacing:.03em; cursor:pointer; white-space:nowrap; }
 #sc13StickyBuy .sc13-sticky-close{ flex-shrink:0; width:24px; height:24px; border-radius:50%; border:1px solid rgba(224,236,255,.3); background:transparent; color:rgba(224,236,255,.7); font-size:13px; line-height:1; cursor:pointer; padding:0; }
 @media (min-width:900px){ #sc13StickyBuy{ display:none !important; } }
+.sc13-collapse{margin-top:34px !important;margin-bottom:34px !important;}
 </style> </head> <body id="top">
 <div id="sc13StickyBuy">
   <div class="sc13-sticky-inner">
@@ -200,7 +201,6 @@ details.sc13-collapse:not([open]) > summary.sc13-collapse-summary{ margin-bottom
   <a class="sc13-nav-brand" href="#top">Star Chart 13</a>
   <nav class="sc13-nav-links">
     <a href="#sc13BirthForm">Chart</a>
-    <a href="#signatureReadings">Readings</a>
     <a href="#reclaimedGarden">Mythology</a>
   </nav>
   <a class="sc13-nav-cta" href="#sc13BirthForm">CREATE MY FREE CHART</a>
@@ -240,7 +240,7 @@ details.sc13-collapse:not([open]) > summary.sc13-collapse-summary{ margin-bottom
 
 <div id="sc13Notable" style="display:none;max-width:640px;margin:20px auto 0;padding:0 16px;"></div>
 
-<div class="sc13-section" id="fullChart" style="margin:20px auto 4px;">
+<div class="sc13-section" id="fullChart" style="display:none;margin:20px auto 4px;">
   <h2 class="sc13-section-title" style="margin-bottom:6px;">YOUR CHART HAS A PLOT TWIST.</h2>
   <p class="sc13-section-copy">The free chart shows you WHAT changed. The $25 Full Reading explains WHAT IT MEANS.</p>
 </div>
@@ -266,21 +266,35 @@ details.sc13-collapse:not([open]) > summary.sc13-collapse-summary{ margin-bottom
   </div>
 </div>
 
-<div id="sc13MiniReading" style="display:none;text-align:center;margin:26px auto 14px;max-width:400px;padding:0 14px;">
-  <div style="font-family:Raleway,sans-serif;font-weight:800;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:rgba(224,236,255,.6);margin-bottom:8px;">Want the shorter version?</div>
-  <div style="border:1px solid rgba(255,46,209,.3);border-radius:14px;padding:16px 16px;background:rgba(255,46,209,.04);">
-    <div style="font-family:Raleway,sans-serif;font-weight:900;font-size:17px;letter-spacing:.02em;color:#EAF1FF;margin-bottom:10px;">Lilith &amp; Eve Placement Reading &mdash; $7</div>
-    <ul style="text-align:left;list-style:none;padding:0;margin:0 auto 12px;max-width:260px;font-family:Trebuchet MS,sans-serif;font-size:12.5px;line-height:1.7;color:rgba(224,236,255,.85);">
-      <li>✦ Black Moon Lilith placement</li>
-      <li>✦ Eve placement</li>
-      <li>✦ What your Lilith&ndash;Eve axis means</li>
-      <li>✦ Short personalized interpretation</li>
-    </ul>
-    <div style="font-family:Raleway,sans-serif;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:rgba(224,236,255,.5);margin-bottom:12px;">Delivered automatically by email</div>
-    <button type="button" id="sc13MiniReadingBtn" onclick="sc13OpenMiniReading()" style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,46,209,.5);background:transparent;color:#FF9FE0;font-family:Raleway,sans-serif;font-weight:800;font-size:13px;letter-spacing:.03em;cursor:pointer;">GET MY $7 READING</button>
-    <div id="sc13MiniReadingMsg" style="font-family:Raleway,sans-serif;font-size:10px;line-height:1.45;color:rgba(224,236,255,0.75);margin-top:10px;">Generate your free chart first. Payment is connected after the report data is prepared.</div>
-  </div>
+<div id="sc13MiniReading" style="display:none;text-align:center;margin:6px auto 18px;max-width:400px;padding:0 14px;">
+  <button type="button" id="sc13MiniReadingBtn" onclick="sc13OpenMiniReading()" style="background:none;border:0;padding:6px;color:rgba(255,159,224,.85);font-family:Raleway,sans-serif;font-weight:700;font-size:12.5px;text-decoration:underline;cursor:pointer;">Just want your Lilith &amp; Eve placements? Get the $7 short reading</button>
+  <div id="sc13MiniReadingMsg" style="font-family:Raleway,sans-serif;font-size:10px;line-height:1.45;color:rgba(224,236,255,0.6);margin-top:4px;"></div>
 </div>
+
+<details class="sc13-section sc13-collapse" id="signatureReadings" style="display:none;">
+  <summary class="sc13-collapse-summary"><span class="sc13-eyebrow">Choose Your Depth</span><h2 class="sc13-section-title">WHAT'S INSIDE THE $25 READING<span class="sc13-collapse-chevron" aria-hidden="true">&#9662;</span></h2></summary>
+  <p class="sc13-section-copy">One reading, several lenses into the same chart — all included, nothing extra to buy.</p>
+  <div class="sc13-reading-grid">
+    <div class="sc13-reading-card">
+      <h3>THE PLOT TWIST</h3>
+      <div class="sc13-reading-kicker">Chart Audit</div>
+      <p>Where your familiar chart and your 13-sign constellation chart diverge, and what each major placement shift means.</p>
+    </div>
+    <div class="sc13-reading-card">
+      <h3>THE SERPENT'S COIL</h3>
+      <div class="sc13-reading-kicker">Relationship &amp; Shadow Themes</div>
+      <p>Lilith and Eve symbolism, sovereignty and shadow themes, and love &amp; relationship patterns in your chart.</p>
+    </div>
+    <div class="sc13-reading-card">
+      <h3>THE 13TH HOUSE ACTIVATION</h3>
+      <div class="sc13-reading-kicker">Ophiuchus &amp; Healing Deep-Dive</div>
+      <p>Ophiuchus placements, your 13th house, and the transformational themes they point to.</p>
+    </div>
+  </div>
+  <div class="sc13-cta-center">
+    <a href="#sc13ReadingProduct" class="sc13-hero-cta" style="display:inline-block;text-decoration:none;" onclick="document.getElementById('sc13ReadingProduct').scrollIntoView({behavior:'smooth',block:'center'});return false;">GET MY $25 PDF READING</a>
+  </div>
+</details>
 
 <div style="max-width:720px;margin:20px auto 0;padding:0 16px;text-align:center;">
   <img src="images/physiology-galactic-zodiac.png" alt="Physiology correlated to the galactic zodiac — a body diagram showing which body parts and systems each zodiac sign, including Ophiuchus, is traditionally associated with." loading="lazy" style="width:100%;height:auto;border-radius:14px;border:1px solid rgba(176,38,255,.35);box-shadow:0 0 16px rgba(176,38,255,.35);">
@@ -378,31 +392,6 @@ details.sc13-collapse:not([open]) > summary.sc13-collapse-summary{ margin-bottom
   </div>
 </details>
 
-<details class="sc13-section sc13-collapse" id="signatureReadings">
-  <summary class="sc13-collapse-summary"><span class="sc13-eyebrow">Choose Your Depth</span><h2 class="sc13-section-title">WHAT'S INSIDE THE $25 READING<span class="sc13-collapse-chevron" aria-hidden="true">&#9662;</span></h2></summary>
-  <p class="sc13-section-copy">One reading, several lenses into the same chart — all included, nothing extra to buy.</p>
-  <div class="sc13-reading-grid">
-    <div class="sc13-reading-card">
-      <h3>THE PLOT TWIST</h3>
-      <div class="sc13-reading-kicker">Chart Audit</div>
-      <p>Where your familiar chart and your 13-sign constellation chart diverge, and what each major placement shift means.</p>
-    </div>
-    <div class="sc13-reading-card">
-      <h3>THE SERPENT'S COIL</h3>
-      <div class="sc13-reading-kicker">Relationship &amp; Shadow Themes</div>
-      <p>Lilith and Eve symbolism, sovereignty and shadow themes, and love &amp; relationship patterns in your chart.</p>
-    </div>
-    <div class="sc13-reading-card">
-      <h3>THE 13TH HOUSE ACTIVATION</h3>
-      <div class="sc13-reading-kicker">Ophiuchus &amp; Healing Deep-Dive</div>
-      <p>Ophiuchus placements, your 13th house, and the transformational themes they point to.</p>
-    </div>
-  </div>
-  <div class="sc13-cta-center">
-    <a href="#sc13ReadingProduct" class="sc13-hero-cta" style="display:inline-block;text-decoration:none;" onclick="document.getElementById('sc13ReadingProduct').scrollIntoView({behavior:'smooth',block:'center'});return false;">GET MY $25 PDF READING</a>
-  </div>
-</details>
-
 <details class="sc13-section sc13-collapse" id="why13">
   <summary class="sc13-collapse-summary"><span class="sc13-eyebrow">The Framework</span><h2 class="sc13-section-title">12 IS THE GRID.<br>13 IS THE SKY.<span class="sc13-collapse-chevron" aria-hidden="true">&#9662;</span></h2></summary>
   <p class="sc13-section-copy">Most Western tropical astrology divides the zodiac into twelve equal 30-degree signs. Star Chart 13 uses a different framework based on thirteen constellational sectors along the ecliptic, including Ophiuchus, with unequal spans.</p>
@@ -479,20 +468,6 @@ details.sc13-collapse:not([open]) > summary.sc13-collapse-summary{ margin-bottom
 <div class="sc13-section">
   <div class="sc13-trust-box">
     <div class="sc13-trust-line">Constellation positions are astronomy.<br>What they mean is <em>astrology</em>.</div>
-  </div>
-</div>
-
-<div class="sc13-section">
-  <span class="sc13-eyebrow">Say It With Us</span>
-  <div class="sc13-phrase-grid">
-    <div class="sc13-phrase-card">YOUR CHART HAS A PLOT TWIST.</div>
-    <div class="sc13-phrase-card">12 IS THE GRID.<br>13 IS THE SKY.</div>
-    <div class="sc13-phrase-card">WERE YOU BORN IN THE SERPENT'S BITE?</div>
-    <div class="sc13-phrase-card">THE SERPENT WAS NEVER THE VILLAIN.</div>
-    <div class="sc13-phrase-card">THE WHEEL IS ALIVE AGAIN.</div>
-    <div class="sc13-phrase-card">WELCOME TO THE RECLAIMED GARDEN.</div>
-    <div class="sc13-phrase-card">THAT WAS ONLY THE SUN.</div>
-    <div class="sc13-phrase-card">LILITH REFUSED.<br>EVE QUESTIONED.<br>THE SERPENT KNEW.</div>
   </div>
 </div>
 
@@ -962,7 +937,7 @@ function draw(ascLon, mcLon, planets){ window.sc13SacredPositions = {}; window.s
     // After the free wheel has had a moment to register, carry the visitor the rest of the
     // way down to the purchase card so it's never missed -- shows the value first, then the offer.
     if(sc13Unlocked){ setTimeout(function(){ const _rpScroll = document.getElementById("sc13ReadingProduct"); if(_rpScroll) _rpScroll.scrollIntoView({behavior:"smooth", block:"center"}); }, 1700); }
-    (function(){ const _rcw = document.getElementById("sc13ReadingProduct"); if(_rcw) _rcw.style.display = "block"; })(); (function(){ const _mini = document.getElementById("sc13MiniReading"); if(_mini) _mini.style.display = "block"; })(); (function(){ const _rm = document.getElementById("sc13ReadingProductMsg"); if(_rm) _rm.innerHTML = '<span style="color:#8dffb0;font-weight:900;">&#10003; Your chart is ready.</span> Tap below to unlock the full written interpretation.'; })(); (function(){ const _mm = document.getElementById("sc13MiniReadingMsg"); if(_mm) _mm.innerHTML = '<span style="color:#8dffb0;font-weight:900;">&#10003; Your chart is ready.</span> Tap below for the short version.'; })(); (function(){ const _sticky = document.getElementById("sc13StickyBuy"); if(_sticky) _sticky.style.display = "block"; })(); setSt(`✅ AS: ${ascInfo.sg.n} ${Math.floor(ascInfo.d)}° · MC: ${mcInfo.sg.n} ${Math.floor(mcInfo.d)}°`,"st-ok"); const big3El = document.getElementById("big3"); if(big3El){ let b3html = ''; /* teaser box disabled — saved in saved-teaser-box.js */ big3El.innerHTML = b3html; big3El.style.display = "none"; }
+    (function(){ const _rcw = document.getElementById("sc13ReadingProduct"); if(_rcw) _rcw.style.display = "block"; })(); (function(){ const _mini = document.getElementById("sc13MiniReading"); if(_mini) _mini.style.display = "block"; })(); (function(){ const _rm = document.getElementById("sc13ReadingProductMsg"); if(_rm) _rm.innerHTML = '<span style="color:#8dffb0;font-weight:900;">&#10003; Your chart is ready.</span> Tap below to unlock the full written interpretation.'; })(); (function(){ const _mm = document.getElementById("sc13MiniReadingMsg"); if(_mm) _mm.innerHTML = ''; })(); (function(){ const _sticky = document.getElementById("sc13StickyBuy"); if(_sticky) _sticky.style.display = "block"; })(); ["fullChart","signatureReadings"].forEach(function(id){ const e = document.getElementById(id); if(e) e.style.display = "block"; }); setSt(`✅ AS: ${ascInfo.sg.n} ${Math.floor(ascInfo.d)}° · MC: ${mcInfo.sg.n} ${Math.floor(mcInfo.d)}°`,"st-ok"); const big3El = document.getElementById("big3"); if(big3El){ let b3html = ''; /* teaser box disabled — saved in saved-teaser-box.js */ big3El.innerHTML = b3html; big3El.style.display = "none"; }
     // Save chart data for reading system
     window.sc13LastChart = {
       pData: pData,
@@ -1005,7 +980,7 @@ function draw(ascLon, mcLon, planets){ window.sc13SacredPositions = {}; window.s
   if(cityEl) cityEl.focus();
 }
 
-function loadPreset(){ document.getElementById("iName").value = "Katy Thomas"; document.getElementById("cityInput").value = "North Kansas City, Missouri"; setDateUI("1989-01-18"); setTimeUI("04:18"); document.getElementById("iLat").value = "39.1317"; document.getElementById("iLon").value = "-94.5717"; document.getElementById("iTz").value = "America/Chicago"; setSt("✅ Katy preset loaded — tap Calculate","st-ok"); } function clearAll(){ ["iName","cityInput","iTime","iHour","iMin","iLat","iLon","iTz"].forEach(id=>{ const e = document.getElementById(id); if(e) e.value = ""; }); setDateUI(""); setTimeUI(""); document.getElementById("out").style.display = "none"; document.getElementById("dbg").style.display = "none"; const outAsp = document.getElementById("outAsp"); if(outAsp){ outAsp.style.display = "none"; outAsp.innerHTML = ""; } const big3 = document.getElementById("big3"); if(big3){ big3.style.display = "none"; big3.innerHTML = ""; } const miniReading = document.getElementById("sc13MiniReading"); if(miniReading) miniReading.style.display = "none"; const notable = document.getElementById("sc13Notable"); if(notable){ notable.style.display = "none"; notable.innerHTML = ""; } const plotTwist = document.getElementById("sc13PlotTwist"); if(plotTwist){ plotTwist.style.display = "none"; plotTwist.innerHTML = ""; } const sticky = document.getElementById("sc13StickyBuy"); if(sticky) sticky.style.display = "none"; setSt("Enter your birth information, then create your chart.","st-wait"); const cv = document.getElementById("cv"); if(cv){ cv.width = cv.width; } } 
+function loadPreset(){ document.getElementById("iName").value = "Katy Thomas"; document.getElementById("cityInput").value = "North Kansas City, Missouri"; setDateUI("1989-01-18"); setTimeUI("04:18"); document.getElementById("iLat").value = "39.1317"; document.getElementById("iLon").value = "-94.5717"; document.getElementById("iTz").value = "America/Chicago"; setSt("✅ Katy preset loaded — tap Calculate","st-ok"); } function clearAll(){ ["iName","cityInput","iTime","iHour","iMin","iLat","iLon","iTz"].forEach(id=>{ const e = document.getElementById(id); if(e) e.value = ""; }); setDateUI(""); setTimeUI(""); document.getElementById("out").style.display = "none"; document.getElementById("dbg").style.display = "none"; const outAsp = document.getElementById("outAsp"); if(outAsp){ outAsp.style.display = "none"; outAsp.innerHTML = ""; } const big3 = document.getElementById("big3"); if(big3){ big3.style.display = "none"; big3.innerHTML = ""; } const miniReading = document.getElementById("sc13MiniReading"); if(miniReading) miniReading.style.display = "none"; const notable = document.getElementById("sc13Notable"); if(notable){ notable.style.display = "none"; notable.innerHTML = ""; } const plotTwist = document.getElementById("sc13PlotTwist"); if(plotTwist){ plotTwist.style.display = "none"; plotTwist.innerHTML = ""; } const sticky = document.getElementById("sc13StickyBuy"); if(sticky) sticky.style.display = "none"; ["fullChart","signatureReadings","sc13ReadingProduct"].forEach(function(id){ const e = document.getElementById(id); if(e) e.style.display = "none"; }); setSt("Enter your birth information, then create your chart.","st-wait"); const cv = document.getElementById("cv"); if(cv){ cv.width = cv.width; } } 
 
 /* ================== Star Chart 13 Detailed PDF Report Data Engine ==================
    This does NOT recalculate the natal chart. It packages the exact data already
