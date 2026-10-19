@@ -239,6 +239,13 @@ details.sc13-collapse:not([open]) > summary.sc13-collapse-summary{ margin-bottom
 
 <div id="outAsp" style="display:none;margin-top:14px;background:rgba(0,0,0,.5);border:1px solid rgba(155,77,255,.3);border-radius:12px;padding:14px 16px;color:#e0f0ff;"></div></div>
 
+<div id="sc13ShareWrap" style="display:none;text-align:center;margin:18px auto 0;padding:0 16px;">
+  <button type="button" id="sc13ShareBtn" onclick="sc13ShareChart()" style="display:inline-flex;align-items:center;gap:10px;padding:13px 26px;border-radius:999px;border:1px solid rgba(34,211,238,.6);background:rgba(34,211,238,.08);color:#22D3EE;font-family:Raleway,sans-serif;font-weight:900;font-size:13px;letter-spacing:.05em;cursor:pointer;box-shadow:0 0 10px rgba(34,211,238,.4);">
+    &#128228; SHARE MY CHART
+  </button>
+  <div id="sc13ShareMsg" style="font-family:Raleway,sans-serif;font-size:10.5px;line-height:1.5;color:rgba(224,236,255,0.6);margin-top:8px;"></div>
+</div>
+
 <div style="max-width:720px;margin:20px auto 0;padding:0 16px;text-align:center;">
   <img src="images/physiology-galactic-zodiac.png" alt="Physiology correlated to the galactic zodiac — a body diagram showing which body parts and systems each zodiac sign, including Ophiuchus, is traditionally associated with." loading="lazy" style="width:100%;height:auto;border-radius:14px;border:1px solid rgba(176,38,255,.35);box-shadow:0 0 16px rgba(176,38,255,.35);">
 </div>
@@ -566,6 +573,165 @@ function sc13RenderNotablePlacements(pData, ascInfo){
 
   box.innerHTML = html;
   box.style.display = "block";
+}
+
+/* ---------- Shareable chart-result image (organic/free advertising loop) ---------- */
+async function sc13ShareChart(){
+  const msgEl = document.getElementById("sc13ShareMsg");
+  const btn = document.getElementById("sc13ShareBtn");
+  try{
+    const c = window.sc13LastChart;
+    if(!c || !c.pData){ if(msgEl) msgEl.textContent = "Generate your chart first."; return; }
+    if(btn) btn.disabled = true;
+    if(msgEl) msgEl.textContent = "Building your image...";
+
+    const sun = c.pData.find(p=>p.name==="Sun");
+    const moon = c.pData.find(p=>p.name==="Moon");
+    const sunTropical = (sun && typeof sc13TropicalSignOf==="function") ? sc13TropicalSignOf(sun.lon) : null;
+    const isTwist = !!(sun && sunTropical && sunTropical !== sun.signN);
+    const name = (document.getElementById("iName").value || "").trim();
+
+    const blob = await sc13RenderShareCanvas({ c, sun, moon, isTwist, sunTropical, name });
+    const file = new File([blob], "star-chart-13-reading.png", { type: "image/png" });
+
+    sc13GaEvent("chart_share_clicked");
+
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      try{
+        await navigator.share({
+          files: [file],
+          title: "My Star Chart 13 Reading",
+          text: isTwist ? "My chart has a plot twist — see yours free at starchart13.com" : "I just generated my 13-sign astrology chart at starchart13.com"
+        });
+        if(msgEl) msgEl.textContent = "Shared! Thank you ✨";
+      }catch(shareErr){
+        if(shareErr && shareErr.name !== "AbortError" && msgEl) msgEl.textContent = "Share cancelled.";
+        else if(msgEl) msgEl.textContent = "";
+      }
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "star-chart-13-reading.png";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url), 4000);
+      if(msgEl) msgEl.textContent = "Image saved — post it to your story!";
+    }
+  }catch(e){
+    console.error("Share image failed", e);
+    if(msgEl) msgEl.textContent = "Couldn't build the image — try again.";
+  }finally{
+    if(btn) btn.disabled = false;
+  }
+}
+
+function sc13RenderShareCanvas({ c, sun, moon, isTwist, sunTropical, name }){
+  return new Promise((resolve, reject)=>{
+    try{
+      const W = 1080, H = 1080;
+      const cv = document.createElement("canvas");
+      cv.width = W; cv.height = H;
+      const ctx = cv.getContext("2d");
+
+      // Background
+      ctx.fillStyle = "#070B14";
+      ctx.fillRect(0,0,W,H);
+      let g1 = ctx.createRadialGradient(W*0.5,H*0.3,0,W*0.5,H*0.3,W*0.65);
+      g1.addColorStop(0,"rgba(176,38,255,.28)"); g1.addColorStop(1,"rgba(176,38,255,0)");
+      ctx.fillStyle = g1; ctx.fillRect(0,0,W,H);
+      let g2 = ctx.createRadialGradient(W*0.5,H*0.88,0,W*0.5,H*0.88,W*0.6);
+      g2.addColorStop(0,"rgba(34,211,238,.18)"); g2.addColorStop(1,"rgba(34,211,238,0)");
+      ctx.fillStyle = g2; ctx.fillRect(0,0,W,H);
+
+      // Scattered gold sparkles
+      let seed = 11;
+      function rnd(){ seed = (seed*9301+49297)%233280; return seed/233280; }
+      ctx.fillStyle = "#ffd700"; ctx.font = "16px Arial";
+      for(let i=0;i<22;i++){
+        ctx.save();
+        ctx.globalAlpha = 0.35 + rnd()*0.5;
+        ctx.font = (14+rnd()*14)+"px Arial";
+        ctx.fillText("✦", rnd()*W, rnd()*H);
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+
+      ctx.textAlign = "center";
+
+      // Eyebrow
+      ctx.fillStyle = "#22D3EE";
+      ctx.font = "800 24px Raleway, Arial, sans-serif";
+      ctx.shadowColor = "rgba(34,211,238,.9)"; ctx.shadowBlur = 14;
+      ctx.fillText("S T A R   C H A R T   1 3", W/2, 150);
+      ctx.shadowBlur = 0;
+
+      // Headline
+      const headline = isTwist ? "MY CHART HAS A PLOT TWIST" : "MY CHART IS CONFIRMED";
+      ctx.font = "900 54px Cinzel, Georgia, serif";
+      let hg = ctx.createLinearGradient(W*0.15,0,W*0.85,0);
+      hg.addColorStop(0,"#2563FF"); hg.addColorStop(0.35,"#22D3EE"); hg.addColorStop(0.7,"#B026FF"); hg.addColorStop(1,"#FF2ED1");
+      ctx.fillStyle = hg;
+      ctx.shadowColor = "rgba(176,38,255,.6)"; ctx.shadowBlur = 20;
+      wrapCanvasText(ctx, headline, W/2, 235, 820, 60);
+      ctx.shadowBlur = 0;
+
+      // Decorative ring with Sun glyph
+      const R = 185, cx = W/2, cy = 560;
+      let ring = ctx.createLinearGradient(cx-R,cy-R,cx+R,cy+R);
+      ring.addColorStop(0,"#ff2bd6"); ring.addColorStop(0.5,"#22D3EE"); ring.addColorStop(1,"#B026FF");
+      ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+      ctx.strokeStyle = ring; ctx.lineWidth = 18;
+      ctx.shadowColor = "rgba(176,38,255,.75)"; ctx.shadowBlur = 40;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "#070B14"; ctx.beginPath(); ctx.arc(cx,cy,R-14,0,Math.PI*2); ctx.fill();
+      ctx.font = "900 150px 'Segoe UI Symbol',Arial,sans-serif";
+      ctx.fillStyle = "#fff";
+      ctx.shadowColor = "rgba(255,255,255,.85)"; ctx.shadowBlur = 26;
+      ctx.fillText((GLYPHS.Sun||"☉"), cx, cy+55);
+      ctx.shadowBlur = 0;
+
+      // Name
+      ctx.font = "900 26px Raleway, Arial, sans-serif";
+      ctx.fillStyle = "#EAF1FF";
+      ctx.fillText(name || "My Reading", W/2, 800);
+
+      // Sun / Moon / Rising lines
+      ctx.font = "700 27px 'Trebuchet MS', Arial, sans-serif";
+      ctx.fillStyle = "rgba(230,225,255,.92)";
+      let y = 850;
+      const sunLine = isTwist
+        ? `Sun in ${sun.signN} (traditionally ${sunTropical})`
+        : `Sun in ${sun.signN}`;
+      ctx.fillText(sunLine, W/2, y); y += 42;
+      if(moon){ ctx.fillText(`Moon in ${moon.signN}`, W/2, y); y += 42; }
+      if(c.ascInfo && c.ascInfo.sg){ ctx.fillText(`Rising in ${c.ascInfo.sg.n}`, W/2, y); y += 42; }
+
+      // Footer CTA
+      ctx.font = "800 22px Raleway, Arial, sans-serif";
+      ctx.fillStyle = "#22D3EE";
+      ctx.shadowColor = "rgba(34,211,238,.7)"; ctx.shadowBlur = 10;
+      ctx.fillText("Get your free chart at starchart13.com", W/2, 1010);
+      ctx.shadowBlur = 0;
+
+      cv.toBlob(function(blob){
+        if(blob) resolve(blob); else reject(new Error("toBlob returned null"));
+      }, "image/png");
+    }catch(e){ reject(e); }
+  });
+}
+
+function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight){
+  const words = text.split(" ");
+  let line = "";
+  const lines = [];
+  for(const w of words){
+    const test = line ? line + " " + w : w;
+    if(ctx.measureText(test).width > maxWidth && line){ lines.push(line); line = w; }
+    else { line = test; }
+  }
+  if(line) lines.push(line);
+  const startY = y - ((lines.length-1) * lineHeight)/2;
+  lines.forEach((ln,i)=> ctx.fillText(ln, x, startY + i*lineHeight));
 }
 </script>
 
@@ -966,7 +1132,7 @@ function draw(ascLon, mcLon, planets){ window.sc13SacredPositions = {}; window.s
     // After the free wheel has had a moment to register, carry the visitor the rest of the
     // way down to the purchase card so it's never missed -- shows the value first, then the offer.
     if(sc13Unlocked){ setTimeout(function(){ const _rpScroll = document.getElementById("sc13ReadingProduct"); if(_rpScroll) _rpScroll.scrollIntoView({behavior:"smooth", block:"center"}); }, 1700); }
-    (function(){ const _rcw = document.getElementById("sc13ReadingProduct"); if(_rcw) _rcw.style.display = "block"; })(); (function(){ const _mini = document.getElementById("sc13MiniReading"); if(_mini) _mini.style.display = "block"; })(); (function(){ const _rm = document.getElementById("sc13ReadingProductMsg"); if(_rm) _rm.innerHTML = '<span style="color:#8dffb0;font-weight:900;">&#10003; Your chart is ready.</span> Tap below to unlock the full written interpretation.'; })(); (function(){ const _mm = document.getElementById("sc13MiniReadingMsg"); if(_mm) _mm.innerHTML = '<span style="color:#8dffb0;font-weight:900;">&#10003; Your chart is ready.</span> Tap below for the short version.'; })(); (function(){ const _sticky = document.getElementById("sc13StickyBuy"); if(_sticky) _sticky.style.display = "block"; })(); setSt(`✅ AS: ${ascInfo.sg.n} ${Math.floor(ascInfo.d)}° · MC: ${mcInfo.sg.n} ${Math.floor(mcInfo.d)}°`,"st-ok"); const big3El = document.getElementById("big3"); if(big3El){ let b3html = ''; /* teaser box disabled — saved in saved-teaser-box.js */ big3El.innerHTML = b3html; big3El.style.display = "none"; }
+    (function(){ const _rcw = document.getElementById("sc13ReadingProduct"); if(_rcw) _rcw.style.display = "block"; })(); (function(){ const _mini = document.getElementById("sc13MiniReading"); if(_mini) _mini.style.display = "block"; })(); (function(){ const _rm = document.getElementById("sc13ReadingProductMsg"); if(_rm) _rm.innerHTML = '<span style="color:#8dffb0;font-weight:900;">&#10003; Your chart is ready.</span> Tap below to unlock the full written interpretation.'; })(); (function(){ const _mm = document.getElementById("sc13MiniReadingMsg"); if(_mm) _mm.innerHTML = '<span style="color:#8dffb0;font-weight:900;">&#10003; Your chart is ready.</span> Tap below for the short version.'; })(); (function(){ const _sticky = document.getElementById("sc13StickyBuy"); if(_sticky) _sticky.style.display = "block"; })(); (function(){ const _sw = document.getElementById("sc13ShareWrap"); if(_sw) _sw.style.display = "block"; })(); setSt(`✅ AS: ${ascInfo.sg.n} ${Math.floor(ascInfo.d)}° · MC: ${mcInfo.sg.n} ${Math.floor(mcInfo.d)}°`,"st-ok"); const big3El = document.getElementById("big3"); if(big3El){ let b3html = ''; /* teaser box disabled — saved in saved-teaser-box.js */ big3El.innerHTML = b3html; big3El.style.display = "none"; }
     // Save chart data for reading system
     window.sc13LastChart = {
       pData: pData,
@@ -1009,7 +1175,7 @@ function draw(ascLon, mcLon, planets){ window.sc13SacredPositions = {}; window.s
   if(cityEl) cityEl.focus();
 }
 
-function loadPreset(){ document.getElementById("iName").value = "Katy Thomas"; document.getElementById("cityInput").value = "North Kansas City, Missouri"; setDateUI("1989-01-18"); setTimeUI("04:18"); document.getElementById("iLat").value = "39.1317"; document.getElementById("iLon").value = "-94.5717"; document.getElementById("iTz").value = "America/Chicago"; setSt("✅ Katy preset loaded — tap Calculate","st-ok"); } function clearAll(){ ["iName","cityInput","iTime","iHour","iMin","iLat","iLon","iTz"].forEach(id=>{ const e = document.getElementById(id); if(e) e.value = ""; }); setDateUI(""); setTimeUI(""); document.getElementById("out").style.display = "none"; document.getElementById("dbg").style.display = "none"; const outAsp = document.getElementById("outAsp"); if(outAsp){ outAsp.style.display = "none"; outAsp.innerHTML = ""; } const big3 = document.getElementById("big3"); if(big3){ big3.style.display = "none"; big3.innerHTML = ""; } const miniReading = document.getElementById("sc13MiniReading"); if(miniReading) miniReading.style.display = "none"; const notable = document.getElementById("sc13Notable"); if(notable){ notable.style.display = "none"; notable.innerHTML = ""; } const plotTwist = document.getElementById("sc13PlotTwist"); if(plotTwist){ plotTwist.style.display = "none"; plotTwist.innerHTML = ""; } const sticky = document.getElementById("sc13StickyBuy"); if(sticky) sticky.style.display = "none"; setSt("Enter your birth information, then create your chart.","st-wait"); const cv = document.getElementById("cv"); if(cv){ cv.width = cv.width; } } 
+function loadPreset(){ document.getElementById("iName").value = "Katy Thomas"; document.getElementById("cityInput").value = "North Kansas City, Missouri"; setDateUI("1989-01-18"); setTimeUI("04:18"); document.getElementById("iLat").value = "39.1317"; document.getElementById("iLon").value = "-94.5717"; document.getElementById("iTz").value = "America/Chicago"; setSt("✅ Katy preset loaded — tap Calculate","st-ok"); } function clearAll(){ ["iName","cityInput","iTime","iHour","iMin","iLat","iLon","iTz"].forEach(id=>{ const e = document.getElementById(id); if(e) e.value = ""; }); setDateUI(""); setTimeUI(""); document.getElementById("out").style.display = "none"; document.getElementById("dbg").style.display = "none"; const outAsp = document.getElementById("outAsp"); if(outAsp){ outAsp.style.display = "none"; outAsp.innerHTML = ""; } const big3 = document.getElementById("big3"); if(big3){ big3.style.display = "none"; big3.innerHTML = ""; } const miniReading = document.getElementById("sc13MiniReading"); if(miniReading) miniReading.style.display = "none"; const notable = document.getElementById("sc13Notable"); if(notable){ notable.style.display = "none"; notable.innerHTML = ""; } const plotTwist = document.getElementById("sc13PlotTwist"); if(plotTwist){ plotTwist.style.display = "none"; plotTwist.innerHTML = ""; } const sticky = document.getElementById("sc13StickyBuy"); if(sticky) sticky.style.display = "none"; const shareWrap = document.getElementById("sc13ShareWrap"); if(shareWrap) shareWrap.style.display = "none"; setSt("Enter your birth information, then create your chart.","st-wait"); const cv = document.getElementById("cv"); if(cv){ cv.width = cv.width; } } 
 
 /* ================== Star Chart 13 Detailed PDF Report Data Engine ==================
    This does NOT recalculate the natal chart. It packages the exact data already
