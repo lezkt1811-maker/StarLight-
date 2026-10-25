@@ -1389,6 +1389,10 @@ async function sc13AdminSendFree(isMini){
 
 async function sc13PrepareDetailedReading(){
   const msg = document.getElementById("sc13ReadingProductMsg");
+  if(READING_SALES_CONFIG.readingsPaused){
+    if(msg) msg.innerHTML = '<span style="color:#ffd27a;font-weight:900;">Paid readings are paused for a short time. Your free chart still works. Please check back soon!</span>';
+    return null;
+  }
   const btn = document.getElementById("sc13PrepareBtn");
   sc13GaEvent("reading_checkout_clicked", {product_id:"full_reading_25", price:25});
   try{
@@ -1551,6 +1555,10 @@ function sc13BuildMiniReportPayload(){
 
 async function sc13OpenMiniReading(){
   const msg = document.getElementById("sc13MiniReadingMsg");
+  if(READING_SALES_CONFIG.readingsPaused){
+    if(msg) msg.innerHTML = '<span style="color:#ffd27a;font-weight:900;">Paid readings are paused for a short time. Your free chart still works. Please check back soon!</span>';
+    return null;
+  }
   const btn = document.getElementById("sc13MiniReadingBtn");
   sc13GaEvent("reading_checkout_clicked", {product_id:"mini_reading_7", price:7});
   try{
@@ -1683,4 +1691,22 @@ if ('serviceWorker' in navigator) {
 </script>
 
 
+
+<script>
+(function(){
+  function sc13ApplyPause(){
+    try{
+      if(typeof READING_SALES_CONFIG==="undefined" || !READING_SALES_CONFIG.readingsPaused) return;
+      ["sc13PrepareBtn","sc13MiniReadingBtn"].forEach(function(id){
+        var b=document.getElementById(id);
+        if(b){ b.disabled=true; b.textContent="READINGS BACK SOON"; b.style.opacity=".55"; b.style.cursor="not-allowed"; }
+      });
+      document.querySelectorAll(".sc13-sticky-btn").forEach(function(b){ b.disabled=true; b.textContent="BACK SOON"; b.style.opacity=".55"; });
+      var sticky=document.getElementById("sc13StickyBuy"); if(sticky) sticky.style.display="none";
+    }catch(e){}
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", sc13ApplyPause); else sc13ApplyPause();
+  window.addEventListener("load", sc13ApplyPause);
+})();
+</script>
 </body> </html>
