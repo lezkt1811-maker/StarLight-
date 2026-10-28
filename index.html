@@ -89,6 +89,7 @@
 @media (max-width:560px){ .sc13-nav{ justify-content:flex-start; } .sc13-nav-brand{ width:100%; text-align:center; margin:0 0 2px; } .sc13-nav-links{ justify-content:center; width:100%; } .sc13-nav-cta{ margin:4px auto 0; } }
 
 .sc13-hero-support{ font-family:Trebuchet MS,sans-serif; font-size:13.5px; line-height:1.6; color:rgba(224,236,255,0.92); max-width:38ch; margin:2px auto 0; }
+.sc13-hero-offer{ margin-top:8px; color:#FF9FE0; font-weight:700; }
 .sc13-hero-ctas{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:10px; }
 .sc13-hero-cta-secondary{ background:transparent; border:1px solid rgba(34,211,238,.6); box-shadow:0 0 10px rgba(34,211,238,.5); color:#22D3EE; }
 
@@ -204,7 +205,7 @@ details.sc13-collapse:not([open]) > summary.sc13-collapse-summary{ margin-bottom
   </nav>
   <a class="sc13-nav-cta" href="#sc13BirthForm">CREATE MY FREE CHART</a>
 </header>
-<div class="cyber-banner"> <img src="images/lilith-eve-hands-banner.jpg" alt="Star Chart 13 — Lilith and Eve forming a heart before the restored 13-sign celestial wheel." width="2172" height="724" style="display:block;width:100%;max-width:600px;height:auto;margin:0 auto;border-radius:10px;"> <p style="position:absolute;left:-9999px;font-size:1px;opacity:0;" aria-hidden="true"> 13 sign astrology chart with Ophiuchus. True sky astrology based on real astronomical constellations. Generate your free 13 sign natal chart including Ophiuchus the 13th zodiac sign. Unlike traditional astrology, Star Chart 13 matches the actual sky verified with astronomy apps like Sky Map and Stellarium. </p> </div>
+<div class="cyber-banner"> <img src="images/lilith-eve-hands-banner.jpg" alt="Star Chart 13 — Lilith and Eve forming a heart before the restored 13-sign celestial wheel." width="2172" height="724" style="display:block;width:100%;max-width:600px;height:auto;margin:0 auto;border-radius:10px;"> </div>
 
 <div class="sc13-hero">
   <div class="sc13-hero-eyebrow">Star Chart 13</div>
@@ -212,6 +213,7 @@ details.sc13-collapse:not([open]) > summary.sc13-collapse-summary{ margin-bottom
   <h1 class="sc13-hero-h1">OPHIUCHUS</h1>
   <div class="sc13-hero-copy">
     <p class="sc13-hero-support">See your chart aligned with the astronomical sky that was actually there at your birth.</p>
+    <p class="sc13-hero-support sc13-hero-offer">Free chart in seconds. Want the full story? Get a personal 13-sign reading, emailed as a PDF ($25).</p>
     <a href="#sc13BirthForm" class="sc13-hero-cta" style="text-decoration:none;">CREATE MY FREE CHART</a>
   </div>
 </div>
@@ -1406,6 +1408,10 @@ async function sc13AdminSendFree(isMini){
 
 async function sc13PrepareDetailedReading(){
   const msg = document.getElementById("sc13ReadingProductMsg");
+  if(READING_SALES_CONFIG.readingsPaused){
+    if(msg) msg.innerHTML = '<span style="color:#ffd27a;font-weight:900;">Paid readings are paused for a short time. Your free chart still works. Please check back soon!</span>';
+    return null;
+  }
   const btn = document.getElementById("sc13PrepareBtn");
   sc13GaEvent("reading_checkout_clicked", {product_id:"full_reading_25", price:25});
   try{
@@ -1568,6 +1574,10 @@ function sc13BuildMiniReportPayload(){
 
 async function sc13OpenMiniReading(){
   const msg = document.getElementById("sc13MiniReadingMsg");
+  if(READING_SALES_CONFIG.readingsPaused){
+    if(msg) msg.innerHTML = '<span style="color:#ffd27a;font-weight:900;">Paid readings are paused for a short time. Your free chart still works. Please check back soon!</span>';
+    return null;
+  }
   const btn = document.getElementById("sc13MiniReadingBtn");
   sc13GaEvent("reading_checkout_clicked", {product_id:"mini_reading_7", price:7});
   try{
@@ -1700,4 +1710,22 @@ if ('serviceWorker' in navigator) {
 </script>
 
 
+
+<script>
+(function(){
+  function sc13ApplyPause(){
+    try{
+      if(typeof READING_SALES_CONFIG==="undefined" || !READING_SALES_CONFIG.readingsPaused) return;
+      ["sc13PrepareBtn","sc13MiniReadingBtn"].forEach(function(id){
+        var b=document.getElementById(id);
+        if(b){ b.disabled=true; b.textContent="READINGS BACK SOON"; b.style.opacity=".55"; b.style.cursor="not-allowed"; }
+      });
+      document.querySelectorAll(".sc13-sticky-btn").forEach(function(b){ b.disabled=true; b.textContent="BACK SOON"; b.style.opacity=".55"; });
+      var sticky=document.getElementById("sc13StickyBuy"); if(sticky) sticky.style.display="none";
+    }catch(e){}
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", sc13ApplyPause); else sc13ApplyPause();
+  window.addEventListener("load", sc13ApplyPause);
+})();
+</script>
 </body> </html>

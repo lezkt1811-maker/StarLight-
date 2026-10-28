@@ -6,6 +6,10 @@
 // you were given alongside this file for exact steps).
 
 const READING_SALES_CONFIG = {
+  // PAUSE SWITCH: true = buy buttons show "Readings back soon" and no one can check out.
+  // Set back to false once Claude API credits are added and the new API key is in Cloudflare.
+  readingsPaused: true,
+
   price: 25,
   priceDisplay: "$25",
 
