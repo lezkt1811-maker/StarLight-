@@ -2,6 +2,7 @@ import { buildReadingPdf, buildMiniReadingPdf } from "./pdf.js";
 import { generateInterpretation, generateMiniInterpretation } from "./interpret.js";
 import { sendReadingEmail, sendHoldingEmail, notifyOwner } from "./email.js";
 import { smsOwner } from "./sms.js";
+import { fetchWithTimeout } from "./http.js";
 
 const VALID_SCHEMAS = ["starchart13-detailed-reading", "starchart13-mini-reading"];
 import { STATUS, createOrder, getOrder, getOrderIdBySession, setStatus } from "./orders.js";
@@ -74,6 +75,10 @@ export default {
 
     if (url.pathname === "/admin/create-paid-order" && request.method === "POST") {
       return handleAdminCreatePaidOrder(request, env);
+    }
+
+    if (url.pathname === "/admin/email-status" && request.method === "GET") {
+      return handleAdminEmailStatus(url, env);
     }
 
     return new Response("Not found", { status: 404 });
@@ -224,6 +229,58 @@ function timingSafeEqual(a, b) {
   let result = 0;
   for (let i = 0; i < a.length; i++) result |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return result === 0;
+}
+
+/* Read-only deliverability check: pulls the last 100 sends from Resend's own API (no
+   separate Resend login needed -- this worker already holds RESEND_API_KEY) and surfaces
+   each one's last_event (delivered, bounced, complained, etc.) so a missing email can be
+   told apart from one that was sent but rejected downstream. Same bearer-token model as
+   the other /admin routes. */
+async function handleAdminEmailStatus(url, env) {
+  const headers = { "Content-Type": "application/json" };
+  if (!env.ADMIN_TOKEN || !timingSafeEqual(url.searchParams.get("token") || "", env.ADMIN_TOKEN)) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers });
+  }
+  if (!env.RESEND_API_KEY) {
+    return new Response(JSON.stringify({ error: "RESEND_API_KEY is not configured" }), { status: 500, headers });
+  }
+
+  let resp;
+  try {
+    resp = await fetchWithTimeout(
+      "https://api.resend.com/emails?limit=100",
+      { headers: { Authorization: `Bearer ${env.RESEND_API_KEY}` } },
+      15000
+    );
+  } catch (e) {
+    return new Response(JSON.stringify({ error: `Could not reach Resend: ${e.message}` }), { status: 502, headers });
+  }
+  if (!resp.ok) {
+    const text = await resp.text();
+    return new Response(JSON.stringify({ error: `Resend API error ${resp.status}: ${text}` }), { status: 502, headers });
+  }
+
+  const data = await resp.json();
+  const filter = (url.searchParams.get("q") || "").toLowerCase();
+  const emails = (data.data || [])
+    .map((e) => ({
+      id: e.id,
+      to: e.to,
+      bcc: e.bcc,
+      subject: e.subject,
+      created_at: e.created_at,
+      last_event: e.last_event,
+    }))
+    .filter((e) => {
+      if (!filter) return true;
+      const haystack = [e.subject, ...(Array.isArray(e.to) ? e.to : [e.to]), ...(Array.isArray(e.bcc) ? e.bcc : [e.bcc])]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(filter);
+    });
+
+  return new Response(JSON.stringify({ count: emails.length, emails }, null, 2), { status: 200, headers });
 }
 
 /* A simple, read-only business log: every order, newest first, with the customer's
