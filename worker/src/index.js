@@ -301,6 +301,18 @@ function escapeHtml(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+/* Turns an interpretation object key like "plutoSection" or "house13Section" into a
+   readable heading ("Pluto", "House 13") for the admin log view -- the raw camelCase
+   key was never meant to be displayed as-is. */
+function humanizeSectionKey(key) {
+  const stripped = key.replace(/Section$/, "");
+  const spaced = stripped
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/([a-zA-Z])(\d)/g, "$1 $2")
+    .replace(/(\d)([A-Z])/g, "$1 $2");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
 function renderAdminLogHtml(orders, token, viewState = {}) {
   const { showAll = false, hiddenCount = 0, hasOwnEmail = false } = viewState;
   const rows = orders.map((o) => {
@@ -331,7 +343,7 @@ function renderAdminLogHtml(orders, token, viewState = {}) {
       ? Object.entries(o.interpretation)
           .map(
             ([k, v]) =>
-              `<div class="sec"><div class="sec-label">${escapeHtml(k)}</div><div class="sec-text">${escapeHtml(v)}</div></div>`
+              `<div class="sec"><div class="sec-label">${escapeHtml(humanizeSectionKey(k))}</div><div class="sec-text">${escapeHtml(v)}</div></div>`
           )
           .join("")
       : `<div class="sec-text" style="opacity:.6;">No saved reading text for this order (sent before this log existed, or not yet fulfilled).</div>`;
