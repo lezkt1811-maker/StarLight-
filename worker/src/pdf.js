@@ -17,6 +17,76 @@ const RULE_LIGHT = rgb(0.5, 0.32, 0.68); // mid-violet border, visible against t
 const GOLD_BRIGHT = rgb(1.0, 0.84, 0.25); // bright metallic gold — border stars/sparkles
 const GOLD_SOFT = rgb(0.86, 0.68, 0.32); // deeper champagne gold — border stars/sparkles, alternates with GOLD_BRIGHT
 const HIGHLIGHT = rgb(1.0, 0.82, 0.45); // warm gold — bolded in-text keywords, echoes the star border
+const RX_RED = rgb(1.0, 0.42, 0.42); // retrograde marker — matches the site's "Rx" flag color
+
+/* Same per-planet/point color key the live site uses for the chart wheel, the
+   placements table, and the aspects list (PLANET_COLOR in index.html) -- kept
+   in sync by eye since the two codebases don't share this constant. Keyed by
+   the chart engine's internal point key (payload.points[].key), e.g.
+   "NorthNode", not the human-readable display name. */
+const PLANET_COLOR = {
+  Sun: rgb(1, 0.902, 0),
+  Moon: rgb(0.302, 0.580, 1),
+  Mercury: rgb(1, 0.169, 0.839),
+  Venus: rgb(1, 0, 0),
+  Mars: rgb(1, 0.478, 0),
+  Jupiter: rgb(0, 1, 0),
+  Saturn: rgb(0.702, 0.533, 1),
+  Uranus: rgb(0, 0.898, 1),
+  Neptune: rgb(0.302, 0.580, 1),
+  Pluto: rgb(1, 0.169, 0.839),
+  NorthNode: rgb(0, 1, 0),
+  SouthNode: rgb(1, 0, 0),
+  Chiron: rgb(1, 0.902, 0),
+  Ascendant: rgb(1, 1, 1),
+  MC: rgb(1, 1, 1),
+  IC: rgb(1, 1, 1),
+  BlackMoonLilith: rgb(0.541, 0.169, 0.886),
+  Eve: rgb(1, 0.561, 0.671),
+  PartOfFortune: rgb(1, 0.843, 0),
+  PartOfSpirit: rgb(0.690, 0.769, 1),
+};
+
+/* Same per-sign/constellation color key the live site uses (SIGN_COLOR_MAP in
+   index.html, built off the IAU 13-constellation list) -- keyed by sign/
+   constellation name as it appears in payload.points[].trueSky.constellation
+   and .tropical.sign (e.g. "Ophiuchus", "Scorpio"). */
+const SIGN_COLOR = {
+  Aries: rgb(1, 0, 0),
+  Taurus: rgb(1, 0.333, 0),
+  Gemini: rgb(1, 0.667, 0),
+  Cancer: rgb(1, 0.867, 0),
+  Leo: rgb(0.667, 1, 0),
+  Virgo: rgb(0, 1, 0.267),
+  Libra: rgb(0, 1, 0.667),
+  Scorpio: rgb(0, 0.867, 1),
+  Ophiuchus: rgb(0, 0.533, 1),
+  Sagittarius: rgb(0.267, 0.533, 1),
+  Capricorn: rgb(0.4, 0, 1),
+  Aquarius: rgb(0.667, 0, 1),
+  Pisces: rgb(1, 0, 0.667),
+};
+
+/* Same per-aspect color key the live site uses (ASPECTS in index.html).
+   Quincunx has no site-defined color (the site's own ASPECTS array doesn't
+   include it either) so it falls back to HIGHLIGHT. */
+const ASPECT_COLOR = {
+  Conjunction: rgb(1, 0.169, 0.839),
+  Opposition: rgb(1, 0.169, 0.839),
+  Trine: rgb(0, 0.898, 1),
+  Square: rgb(0, 1, 0.533),
+  Sextile: rgb(1, 0.902, 0),
+};
+
+function colorForPoint(key) {
+  return PLANET_COLOR[key] || INK;
+}
+function colorForSign(name) {
+  return SIGN_COLOR[name] || MUTED;
+}
+function colorForAspect(name) {
+  return ASPECT_COLOR[name] || HIGHLIGHT;
+}
 
 /* Chart terms worth bolding inline so a dense paragraph has scan anchors
    instead of reading as one uniform block -- planets/points, signs, and
@@ -320,6 +390,32 @@ class Cursor {
     });
     this.y -= rowHeight;
   }
+  /* Like row(), but each cell can carry its own color/boldness -- {text,
+     color, bold} instead of a plain string -- so a single row can mix the
+     per-planet and per-sign color coding the live site uses (a plain string
+     cell still works and falls back to opts.bold/MUTED, same as row()). */
+  coloredRow(cells, widths, opts = {}) {
+    const size = opts.size || 9;
+    const rowHeight = size + 7;
+    this.ensureSpace(rowHeight);
+    if (opts.band) {
+      const tableWidth = widths.reduce((a, b) => a + b, 0);
+      this.page.drawRectangle({ x: MARGIN - 4, y: this.y - rowHeight + size + 2, width: tableWidth + 8, height: rowHeight, color: BOX_BG });
+    }
+    let x = MARGIN;
+    cells.forEach((c, i) => {
+      const cell = c && typeof c === "object" ? c : { text: c };
+      this.page.drawText(String(cell.text ?? ""), {
+        x,
+        y: this.y,
+        size,
+        font: cell.bold || opts.bold ? this.boldFont : this.font,
+        color: cell.color || (opts.bold ? INK : MUTED),
+      });
+      x += widths[i];
+    });
+    this.y -= rowHeight;
+  }
   spacer(h = 10) {
     this.y -= h;
   }
@@ -343,6 +439,12 @@ export async function buildReadingPdf(payload, interpretation) {
       console.error("Could not embed wheel image", e.message);
     }
   }
+
+  // Right under the wheel, same as the free chart page itself: the full
+  // color-coded placements table and major-aspects list, not just the wheel
+  // image on its own with no supporting data anywhere near it.
+  drawPlacementsTable(cursor, payload);
+  drawAspectsTable(cursor, payload);
 
   cursor.newPage();
   cursor.heading("Your True-Sky Chart at a Glance", 15, { kicker: "SECTION 1" });
@@ -383,8 +485,6 @@ export async function buildReadingPdf(payload, interpretation) {
   cursor.heading("Mars", 14, { kicker: "SECTION 9" });
   drawPointDataLine(cursor, payload, "Mars", "Mars");
   cursor.sectionText(sections.marsSection);
-
-  drawPlacementsTable(cursor, payload);
 
   cursor.newPage();
   cursor.heading("Jupiter", 14, { kicker: "SECTION 10" });
@@ -432,7 +532,6 @@ export async function buildReadingPdf(payload, interpretation) {
   cursor.newPage();
   cursor.heading("Major Aspect Patterns", 14, { kicker: "SECTION 21" });
   cursor.sectionText(sections.aspectPatterns);
-  drawAspectsTable(cursor, payload);
 
   cursor.newPage();
   cursor.heading("Tropical vs. True Sky", 14, { kicker: "SECTION 22" });
@@ -641,17 +740,36 @@ function drawPointDataLine(cursor, payload, key, displayName) {
   cursor.boldDataLine(line);
 }
 
+/* Builds a point-name -> color lookup from payload.points for the aspects
+   table below, since payload.aspects references points by their human-
+   readable display name (e.g. "North Node") while PLANET_COLOR is keyed by
+   the chart engine's internal key (e.g. "NorthNode") -- this avoids guessing
+   a name-to-key transform and just reads both off the same point record. */
+function buildPointColorByName(payload) {
+  const map = {};
+  (payload.points || []).forEach((p) => {
+    map[p.name] = colorForPoint(p.key);
+  });
+  return map;
+}
+
+/* Mirrors the color-coded placements table shown directly under the free
+   chart wheel on the site itself: each point's name in its own planet
+   color, its true-sky and tropical sign/constellation in that sign's color,
+   and retrograde flagged in red -- not the plain monochrome table this used
+   to be. */
 function drawPlacementsTable(cursor, payload) {
   cursor.heading("Placements Reference", 12);
-  const widths = [95, 45, 150, 150];
-  cursor.row(["Point", "House", "True Sky", "Tropical"], widths, { bold: true, size: 9.5 });
+  const widths = [100, 38, 148, 148, 36];
+  cursor.row(["Point", "House", "True Sky", "Tropical", "Rx"], widths, { bold: true, size: 9.5 });
   (payload.points || []).forEach((p, i) => {
-    cursor.row(
+    cursor.coloredRow(
       [
-        p.name + (p.retrograde ? " (Rx)" : ""),
-        p.house,
-        `${p.trueSky.constellation} ${Math.floor(p.trueSky.degree)}°`,
-        `${p.tropical.sign} ${Math.floor(p.tropical.degree)}°`,
+        { text: p.name, color: colorForPoint(p.key), bold: true },
+        { text: p.house },
+        { text: `${p.trueSky.constellation} ${Math.floor(p.trueSky.degree)}°`, color: colorForSign(p.trueSky.constellation), bold: true },
+        { text: `${p.tropical.sign} ${Math.floor(p.tropical.degree)}°`, color: colorForSign(p.tropical.sign), bold: true },
+        { text: p.retrograde ? "Rx" : "", color: RX_RED, bold: true },
       ],
       widths,
       { band: i % 2 === 1 }
@@ -668,12 +786,27 @@ function drawAllHousesTable(cursor, facts) {
   }
 }
 
+/* Mirrors the "✦ MAJOR ASPECTS ✦" list shown directly under the placements
+   table on the site itself: each point in its own planet color, the aspect
+   name in that aspect's color (pink for conjunction/opposition, cyan for
+   trine, etc.) -- not a plain monochrome table. */
 function drawAspectsTable(cursor, payload) {
-  cursor.spacer(6);
-  const widths = [130, 100, 130, 80];
+  cursor.spacer(10);
+  cursor.heading("Major Aspects", 12);
+  const colorByName = buildPointColorByName(payload);
+  const widths = [150, 95, 150, 50];
   cursor.row(["Point 1", "Aspect", "Point 2", "Orb"], widths, { bold: true, size: 9.5 });
   (payload.aspects || []).forEach((a, i) => {
-    cursor.row([a.point1, a.aspect, a.point2, `${a.orb}°`], widths, { band: i % 2 === 1 });
+    cursor.coloredRow(
+      [
+        { text: a.point1, color: colorByName[a.point1] || INK, bold: true },
+        { text: a.aspect, color: colorForAspect(a.aspect), bold: true },
+        { text: a.point2, color: colorByName[a.point2] || INK, bold: true },
+        { text: `${a.orb}°` },
+      ],
+      widths,
+      { band: i % 2 === 1 }
+    );
   });
 }
 
