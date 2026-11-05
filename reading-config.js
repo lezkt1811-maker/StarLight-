@@ -16,15 +16,6 @@ const READING_SALES_CONFIG = {
   // Stripe Payment Link for the $25 detailed reading purchase button.
   stripePaymentUrl: "https://buy.stripe.com/bJedRb8Yk78ycSsgWOgjC00",
 
-  // $7 "Lilith & Eve Placement Reading" — a lower-cost, faster-turnaround product
-  // shown right after someone generates their free chart, focused on their Black
-  // Moon Lilith and Eve placements. Shares the same automated /prepare → Stripe →
-  // webhook → PDF → email pipeline as the $25 reading (see worker/README.md) —
-  // it is not delivered manually.
-  miniReadingPrice: 7,
-  miniReadingPriceDisplay: "$7",
-  miniReadingStripeUrl: "https://buy.stripe.com/fZu3cx4I4akK2dO8qigjC01",
-
   // Base URL of the Cloudflare Worker (see /worker) that stores the chart data before
   // checkout and emails the finished PDF after Stripe confirms payment.
   fulfillmentApiBase: "https://starchart13-fulfillment.lezkt1811.workers.dev",
