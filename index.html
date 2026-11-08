@@ -235,6 +235,9 @@ details.sc13-collapse:not([open]) > summary.sc13-collapse-summary{ margin-bottom
 <div id="outAsp" style="display:none;margin-top:14px;background:rgba(0,0,0,.5);border:1px solid rgba(155,77,255,.3);border-radius:12px;padding:14px 16px;color:#e0f0ff;"></div></div>
 
 <div id="sc13ShareWrap" style="display:none;text-align:center;margin:18px auto 0;padding:0 16px;">
+  <button type="button" id="sc13ObservatoryBtn" onclick="if(window.SC13Observatory){SC13Observatory.open();}else{setSt('⏳ Observatory still loading — try again in a moment.','st-wait');}" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:420px;margin:0 auto 14px;padding:16px 22px;border-radius:16px;border:1px solid rgba(245,199,107,.75);background:linear-gradient(120deg,rgba(34,211,238,.16),rgba(139,92,246,.2) 50%,rgba(255,46,209,.16));color:#F5C76B;font-family:Cinzel,serif;font-weight:900;font-size:clamp(13px,3.8vw,16px);letter-spacing:.14em;cursor:pointer;box-shadow:0 0 18px rgba(245,199,107,.35),0 0 30px rgba(34,211,238,.2),inset 0 0 12px rgba(245,199,107,.12);text-shadow:0 0 10px rgba(245,199,107,.6);">
+    &#10022; ENTER CELESTIAL OBSERVATORY &#10022;
+  </button>
   <button type="button" id="sc13ShareBtn" onclick="sc13ShareChart()" style="display:inline-flex;align-items:center;gap:10px;padding:13px 26px;border-radius:999px;border:1px solid rgba(34,211,238,.6);background:rgba(34,211,238,.08);color:#22D3EE;font-family:Raleway,sans-serif;font-weight:900;font-size:13px;letter-spacing:.05em;cursor:pointer;box-shadow:0 0 10px rgba(34,211,238,.4);">
     &#128228; SHARE MY CHART
   </button>
@@ -1529,7 +1532,8 @@ function sc13BuildMiniReportPayload(){
 <script src="tropical.js"></script>
 <script src="compare.js"></script>
 <script src="tropical-wheel.js"></script>
-<script src="ecliptic-view.js?v=20260911-real13"></script>
+<script src="ecliptic-view.js?v=20261108-obs"></script>
+<script src="observatory.js?v=20261108"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function(){
     if(window.SC13Ecliptic && document.getElementById('sc13EclCanvas')){
