@@ -147,6 +147,8 @@
     ".obs-title small{display:block;font-family:Raleway,sans-serif;letter-spacing:.06em;font-size:10.5px;color:rgba(234,241,255,.72);font-weight:700;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
     ".obs-x{flex:0 0 auto;width:42px;height:42px;border-radius:50%;border:1px solid rgba(245,199,107,.55);background:rgba(8,12,28,.8);color:#F5C76B;font-size:18px;font-weight:900;box-shadow:0 0 12px rgba(245,199,107,.25)}",
     ".obs-tools{position:absolute;z-index:6;display:flex;gap:6px;align-items:center}",
+    ".obs-share{flex:0 0 auto;height:38px;padding:0 13px;border-radius:999px;border:1px solid rgba(34,211,238,.55);background:rgba(8,12,28,.8);color:#22D3EE;font-size:11.5px;font-weight:900;letter-spacing:.06em;margin-left:auto;box-shadow:0 0 12px rgba(34,211,238,.25)}",
+    ".obs-toast{position:absolute;z-index:9;left:50%;top:64px;transform:translateX(-50%);padding:9px 16px;border-radius:999px;background:rgba(8,12,28,.95);border:1px solid rgba(245,199,107,.6);color:#F5C76B;font-size:12px;font-weight:800;white-space:nowrap;transition:opacity .4s}",
     ".obs-btn{flex:0 0 auto;height:40px;min-width:40px;padding:0 12px;border-radius:999px;border:1px solid rgba(34,211,238,.42);background:rgba(8,14,32,.78);color:#D8E3FF;font-size:11px;font-weight:800;letter-spacing:.06em;white-space:nowrap;transition:border-color .2s,color .2s,box-shadow .2s}",
     ".obs-btn.on{border-color:rgba(245,199,107,.85);color:#F5C76B;box-shadow:0 0 12px rgba(245,199,107,.3)}",
     ".obs-btn.sq{padding:0;width:40px;font-size:17px}",
@@ -262,6 +264,7 @@
       '<canvas class="obs-gl" tabindex="0" aria-label="3D astrology wheel. Drag to rotate, pinch or scroll to zoom, tap a planet to select."></canvas>' +
       '<div class="obs-fallback" hidden></div>' +
       '<header class="obs-top"><div class="obs-title"><span>CELESTIAL OBSERVATORY</span><small>' + esc(sub || "Your true-sky 13-sign birth chart") + '</small></div>' +
+      (typeof global.sc13ObsShareURL === "function" ? '<button class="obs-share" data-act="share" aria-label="Share this observatory">⇪ Share</button>' : '') +
       '<button class="obs-x" data-act="exit" aria-label="Exit observatory">✕</button></header>' +
       '<nav class="obs-tools" aria-label="Observatory controls">' +
       '<button class="obs-btn on" data-tog="planets" aria-pressed="true">☉ Planets</button>' +
@@ -473,14 +476,14 @@
       var n = low ? 450 : 1300, pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
       var palette = [[1, 1, 1], [0.6, 0.9, 1], [0.75, 0.65, 1], [1, 0.85, 0.55]];
       for (var i = 0; i < n; i++) {
-        var u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, rr = 70 + Math.random() * 70, s = Math.sqrt(1 - u * u);
+        var u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, rr = 150 + Math.random() * 110, s = Math.sqrt(1 - u * u);
         pos[i * 3] = rr * s * Math.cos(th); pos[i * 3 + 1] = Math.abs(rr * u) * 0.9 - 8; pos[i * 3 + 2] = rr * s * Math.sin(th);
         var p = palette[(Math.random() * palette.length) | 0], b = 0.55 + Math.random() * 0.45;
         col[i * 3] = p[0] * b; col[i * 3 + 1] = p[1] * b; col[i * 3 + 2] = p[2] * b;
       }
       var g = new THREE.BufferGeometry();
       g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.BufferAttribute(col, 3));
-      var stars = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.55, vertexColors: true, transparent: true, opacity: 0.85, depthWrite: false, fog: false }));
+      var stars = new THREE.Points(g, new THREE.PointsMaterial({ size: 1.1, map: tex(glowCanvas()), vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false, fog: false, blending: THREE.AdditiveBlending }));
       scene.add(stars); refs.anim.stars = stars;
     })();
 
@@ -558,7 +561,7 @@
         });
         var ls = segments(pairs, GOLD, 0.42); ls.userData = { cons: name }; gC.add(ls); refs.consArt.push(ls);
         var pg = new THREE.BufferGeometry().setFromPoints(dots);
-        var pts = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0xfff1c9, size: 0.13, transparent: true, opacity: 0.9, depthWrite: false }));
+        var pts = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0xfff1c9, size: 0.26, map: tex(glowCanvas()), transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending }));
         pts.userData = { cons: name }; gC.add(pts); refs.consArt.push(pts);
       });
     }
@@ -641,7 +644,7 @@
         pos[i * 3] = rr * Math.cos(a); pos[i * 3 + 1] = (Math.random() - 0.5) * 0.35; pos[i * 3 + 2] = rr * Math.sin(a);
       }
       var g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-      var belt = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xbfdcff, size: 0.12, transparent: true, opacity: 0.7, depthWrite: false }));
+      var belt = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xbfdcff, size: 0.22, map: tex(glowCanvas()), transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }));
       belt.rotation.x = 0.16; belt.rotation.z = 0.08; orbits.add(belt); refs.anim.belt = belt;
     })();
     var sweep = sector(R.houseIn, R.houseOut + 0.05, 0, 28, CYAN, 0.16);
@@ -814,10 +817,12 @@
   }
 
   /* ---- Panel D: events, all calculated with Astronomy Engine ---- */
-  function computeEvents(model) {
+  function computeEvents(model, done) {
     var A = global.Astronomy, bt = A.MakeTime(model.utc), now = new Date(), nt = A.MakeTime(now), tz = model.meta.tz || undefined;
     var out = { birth: [], now: [], upcoming: [] };
     function q(name) { return ["New Moon", "First Quarter", "Full Moon", "Last Quarter"][name]; }
+    var stages = [];
+    stages.push(function () {
 
     /* --- At birth --- */
     var ph = A.MoonPhase(bt);
@@ -846,6 +851,8 @@
       if (last) out.birth.push({ i: "✧", b: "Season: born " + Math.floor(bt.ut - last[1].ut) + " days after the " + last[0], s: fmtDay(last[1].date, tz) });
     } catch (e) { }
 
+    });
+    stages.push(function () {
     /* --- Sky now: transits through the natal 13 houses --- */
     var names = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"];
     var transit = names.map(function (n) { return { name: n, lon: getEcl(n, nt), rx: typeof isRetrograde === "function" ? isRetrograde(n, nt) : false }; });
@@ -862,6 +869,8 @@
       });
     });
 
+    });
+    stages.push(function () {
     /* --- Upcoming --- */
     var uq = A.SearchMoonQuarter(nt);
     for (var k = 0; k < 4; k++) { out.upcoming.push({ i: "☽", b: q(uq.quarter), s: fmtWhen(uq.time.date) }); uq = A.NextMoonQuarter(uq); }
@@ -874,8 +883,10 @@
       [yy2, yy2 + 1].forEach(function (yr) { var s = A.Seasons(yr); list.push(["March equinox", s.mar_equinox], ["June solstice", s.jun_solstice], ["September equinox", s.sep_equinox], ["December solstice", s.dec_solstice]); });
       for (var j = 0; j < list.length; j++) if (list[j][1].tt > nt.tt) { out.upcoming.push({ i: "✧", b: list[j][0], s: fmtWhen(list[j][1].date) }); break; }
     } catch (e) { }
-    // constellation ingresses within 60 days (true-sky IAU boundaries)
+    });
     function lonAt(body, t) { return getEcl(body, t); }
+    stages.push(function () {
+    // constellation ingresses within 60 days (true-sky IAU boundaries)
     ["Sun", "Mercury", "Venus", "Mars"].forEach(function (body) {
       var step = body === "Mercury" ? 0.5 : 1, t0 = nt, n0 = signOf(lonAt(body, t0)).sg.n, found = 0;
       for (var d = step; d <= 60 && found < 2; d += step) {
@@ -889,9 +900,10 @@
         t0 = t1;
       }
     });
+    });
     // planetary stations in the next 12 months
     function motion(body, t) { var d = mod360(lonAt(body, t.AddDays(0.5)) - lonAt(body, t.AddDays(-0.5))); return d > 180 ? d - 360 : d; }
-    [["Mercury", 1], ["Venus", 2], ["Mars", 2], ["Jupiter", 3], ["Saturn", 3]].forEach(function (bs) {
+    [["Mercury", 1], ["Venus", 2], ["Mars", 2], ["Jupiter", 3], ["Saturn", 3]].forEach(function (bs) { stages.push(function () {
       var body = bs[0], step = bs[1], t0 = nt, m0 = motion(body, t0);
       for (var d = step; d <= 366; d += step) {
         var t1 = nt.AddDays(d), m1 = motion(body, t1);
@@ -903,8 +915,14 @@
         }
         t0 = t1; m0 = m1;
       }
-    });
-    return out;
+    }); });
+    var i = 0;
+    (function next() {
+      if (!S) return;
+      try { stages[i](); } catch (e) { console.warn("Observatory: event stage failed", e); }
+      i++;
+      if (i < stages.length) setTimeout(next, 0); else done(out);
+    })();
   }
   function eventsHTML(ev) {
     function list(arr) {
@@ -1036,7 +1054,7 @@
     S.evDone = true;
     setTimeout(function () {
       if (!S) return;
-      try { $('[data-pb="D"]').innerHTML = eventsHTML(computeEvents(S.model)); relayout(); }
+      try { computeEvents(S.model, function (ev) { if (S) { $('[data-pb="D"]').innerHTML = eventsHTML(ev); relayout(); } }); }
       catch (e) { console.error(e); $('[data-pb="D"]').innerHTML = '<div class="obs-note">Events could not be calculated on this device: ' + esc(e.message) + '</div>'; }
     }, 30);
   }
@@ -1046,6 +1064,7 @@
       var t = e.target.closest("button,[data-goto],tr[data-pt],[data-cons]");
       if (!t || !S) return;
       if (t.dataset.act === "exit") return close();
+      if (t.dataset.act === "share") return share();
       if (t.dataset.act === "unsel") return select(null);
       if (t.dataset.act === "reset") { S.cam.az = 0; S.cam.el = defaultEl(); S.cam.zoom = 1; S.cam.vaz = S.cam.vel = 0; S.spin = false; setPressed('[data-tog="spin"]', false); return; }
       if (t.dataset.act === "zin") { S.cam.zoom = clamp(S.cam.zoom / 1.2, 0.42, 2.3); return; }
@@ -1078,12 +1097,24 @@
       var si = signOf(lon); select({ type: "cons", key: si.sg.n });
     });
   }
+  function toast(msg) {
+    var el = document.createElement("div"); el.className = "obs-toast"; el.textContent = msg; S.root.appendChild(el);
+    setTimeout(function () { el.style.opacity = "0"; }, 2200); setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 2700);
+  }
+  function share() {
+    var url = global.sc13ObsShareURL(), title = "My Celestial Observatory · true-sky 13-sign chart";
+    if (navigator.share) { navigator.share({ title: title, url: url }).catch(function () { }); return; }
+    var fallback = function () { global.prompt("Copy this link:", url); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(function () { toast("Link copied ✓"); }, fallback);
+    else fallback();
+  }
   function setPressed(sel, v) { var b = $(sel); if (!b) return; b.classList.toggle("on", v); b.setAttribute("aria-pressed", v ? "true" : "false"); }
   function setTab(id) {
     S.openTab = id;
     $$(".obs-panel").forEach(function (p) { p.classList.toggle("open", p.dataset.panel === id); });
     $$(".obs-tab").forEach(function (b) { b.classList.toggle("on", b.dataset.tab === id); });
     if (id === "D") ensureEvents();
+    var hint = $(".obs-hint"); if (hint && id) hint.style.opacity = "0";
     relayout();
   }
   function defaultEl() { return (global.innerHeight > global.innerWidth * 1.15) ? 64 : 50; }
@@ -1137,7 +1168,7 @@
     } catch (e) { return startFallback(e); }
     var pr = Math.min(global.devicePixelRatio || 1, S.low ? 1.5 : 2);
     renderer.setPixelRatio(pr);
-    var camera = new THREE.PerspectiveCamera(42, global.innerWidth / global.innerHeight, 0.1, 400);
+    var camera = new THREE.PerspectiveCamera(42, global.innerWidth / global.innerHeight, 0.1, 600);
     var refs = buildScene(S.model, S.low);
     S.gl = { renderer: renderer, camera: camera, scene: refs.scene, refs: refs, ray: new THREE.Raycaster(), pr: pr, slow: 0, frames: 0 };
     S.cam.el = defaultEl();
