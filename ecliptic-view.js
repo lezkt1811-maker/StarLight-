@@ -2298,6 +2298,10 @@
     IAU13:
       IAU13,
 
+    /* Shared read-only with observatory.js (3D Celestial Observatory). */
+    PROJECTED_LINES:
+      PROJECTED_LINES,
+
     PLANETS:
       PLANETS,
 
